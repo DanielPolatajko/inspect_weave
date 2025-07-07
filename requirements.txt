@@ -1,0 +1,5 @@
+inspect_ai
+weave
+datasets
+openai
+anthropic
