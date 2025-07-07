@@ -16,9 +16,10 @@ class WeaveTestHooks(Hooks):
 
     async def on_run_start(self, data: RunStart) -> None:
         weave.init("test-project")
-        self.weave_eval_logger = weave.EvaluationLogger()
+        self.weave_eval_logger = weave.EvaluationLogger(dataset="hellaswag_test_eval", model="hellaswag_test_model")
 
     async def on_run_end(self, data: RunEnd) -> None:
+        self.weave_eval_logger.log_summary()
         self.weave_eval_logger.finish()
         weave.finish()
 
