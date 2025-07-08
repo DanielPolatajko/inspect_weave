@@ -3,9 +3,6 @@ from inspect_ai.dataset import Sample, hf_dataset
 from inspect_ai.scorer import choice
 from inspect_ai.solver import multiple_choice, system_message
 from dotenv import load_dotenv
-from inspect_weave.providers import weave_evaluation_hooks
-
-weave_evaluation_hooks()
 
 load_dotenv()
 
