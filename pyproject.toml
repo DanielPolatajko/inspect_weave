@@ -1,0 +1,2 @@
+[project.entry-points.inspect_ai]
+inspect_weave = "inspect_weave._registry"

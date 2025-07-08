@@ -1,5 +1,2 @@
-inspect_ai
+git+https://github.com/UKGovernmentBEIS/inspect_ai.git
 weave
-datasets
-openai
-anthropic
