@@ -51,4 +51,4 @@ class WeaveEvaluationHooks(Hooks):
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
-        return "WANDB_API_KEY" in os.environ
+        return True # TODO: find a reliable way to check if Weave is setup correctly
