@@ -40,13 +40,15 @@ class WeaveEvaluationHooks(Hooks):
         )
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
-                scorer_object = {
-                    "name": k,
-                } | v.metadata if v.metadata is not None else {}
                 sample_score_logger.log_score( # TODO: could we use the async method here?
-                    scorer=scorer_object,
+                    scorer=k,
                     score=v.value if not isinstance(v.value, str) and not isinstance(v.value, list) else {"score": str(v.value)}  # TODO: handle different score return types
                  )
+                if v.metadata is not None and "category" in v.metadata:
+                    sample_score_logger.log_score(
+                        scorer=f"{k}_{v.metadata['category']}",
+                        score=v.value if not isinstance(v.value, str) and not isinstance(v.value, list) else {"score": str(v.value)}
+                    )
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
