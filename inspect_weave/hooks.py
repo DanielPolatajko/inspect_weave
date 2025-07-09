@@ -50,5 +50,5 @@ class WeaveEvaluationHooks(Hooks):
                 )
             sample_score_logger.finish()
 
-    async def enable(self) -> bool:
+    def enabled(self) -> bool:
         return "WANDB_API_KEY" in os.environ
