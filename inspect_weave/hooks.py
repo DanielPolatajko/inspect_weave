@@ -44,10 +44,6 @@ class WeaveEvaluationHooks(Hooks):
                     scorer=k,
                     score=v.value if not isinstance(v.value, str) and not isinstance(v.value, list) else {"score": str(v.value)}  # TODO: handle different score return types
                  )
-                sample_score_logger.log_score(
-                    scorer="correct_answer",
-                    score=data.sample.target == v.value
-                )
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
