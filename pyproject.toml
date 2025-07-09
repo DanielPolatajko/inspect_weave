@@ -1,0 +1,31 @@
+[project]
+name = "inspect_weave"
+version = "0.1.0"
+authors = [
+  { name="Daniel Polatajko", email="danielpolatajko@gmail.com" },
+  { name="Qi Guo", email="special0831qi@gmail.com"},
+  { name="Matan Shtepel", email="matan.shtepel@gmail.com" }
+]
+description = "InspectAI <-> Weights and Biases Weave integration"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/DanielPolatajko/inspect_weave"
+Issues = "https://github.com/DanielPolatajko/inspect_weave/issues"
+
+[build-system]
+requires = ["setuptools >= 80.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = [
+    "inspect_weave"
+]
+
+[project.entry-points.inspect_ai]
+inspect_weave = "inspect_weave._registry"

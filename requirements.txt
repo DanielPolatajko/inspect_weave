@@ -1,0 +1,3 @@
+git+https://github.com/UKGovernmentBEIS/inspect_ai.git
+weave
+setuptools
