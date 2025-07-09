@@ -14,10 +14,7 @@ class WeaveEvaluationHooks(Hooks):
     weave_eval_logger: weave.EvaluationLogger | None = None
 
     async def on_run_start(self, data: RunStart) -> None:
-        try:
-            weave.init(os.environ["WEAVE_PROJECT_NAME"])
-        except KeyError as e:
-            raise ValueError("WEAVE_PROJECT_NAME is not set, must be set in the environment to use Weave Evaluation Hooks") from e
+        weave.init(os.environ["WEAVE_PROJECT_NAME"])    
 
     async def on_run_end(self, data: RunEnd) -> None:
         weave.finish()
@@ -52,4 +49,7 @@ class WeaveEvaluationHooks(Hooks):
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
-        return True # TODO: find a reliable way to check if Weave is setup correctly
+        weave_project_present = os.environ.get("WEAVE_PROJECT_NAME") is not None
+        if not weave_project_present:
+            raise ValueError("WEAVE_PROJECT_NAME is not set, must be set in the environment to use Weave Evaluation Hooks")
+        return True
