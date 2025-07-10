@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["datasets", "anthropic", "openai", "pytest", "ruff", "mypy", "pre-commit"]
+dev = ["pytest", "ruff", "mypy", "pre-commit"]
 
 [project.urls]
 Homepage = "https://github.com/DanielPolatajko/inspect_weave"
