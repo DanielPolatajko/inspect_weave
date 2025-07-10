@@ -20,15 +20,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest"]
-dev = ["datasets", "anthropic", "openai"]
+dev = ["datasets", "anthropic", "openai", "pytest", "ruff", "mypy"]
 
 [project.urls]
 Homepage = "https://github.com/DanielPolatajko/inspect_weave"
 Issues = "https://github.com/DanielPolatajko/inspect_weave/issues"
 
 [build-system]
-requires = ["setuptools >= 80.0.0"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
