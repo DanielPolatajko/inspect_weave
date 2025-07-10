@@ -1,1 +1,1 @@
-from inspect_weave.providers import weave_evaluation_hooks
+from inspect_weave.providers import weave_evaluation_hooks, log_hooks
