@@ -1,51 +1,12 @@
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample, hf_dataset
-from inspect_ai.scorer import choice
+from inspect_ai.scorer import choice, scorer, accuracy, stderr, Score
+from inspect_ai.solver._task_state import TaskState, Target
 from inspect_ai.solver import multiple_choice, system_message
-import weave
 from dotenv import load_dotenv
 
-import os
-
-from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks
-
-@hooks(name="weave_test_hooks", description="Weave test hooks")
-class WeaveTestHooks(Hooks):
-
-    weave_eval_logger: weave.EvaluationLogger | None = None
-
-    async def on_run_start(self, data: RunStart) -> None:
-        weave.init("test-project")
-        self.weave_eval_logger = weave.EvaluationLogger(dataset="hellaswag_test_eval", model="hellaswag_test_model")
-
-    async def on_run_end(self, data: RunEnd) -> None:
-        self.weave_eval_logger.log_summary()
-        self.weave_eval_logger.finish()
-        weave.finish()
-
-    async def on_sample_end(self, data: SampleEnd) -> None:
-        weave.init("test-project")
-        sample_score_logger = self.weave_eval_logger.log_prediction(
-            inputs=data.summary.input,
-            output=data.summary.target # TODO: this should be the model output, which is not available in the data.summary object
-        )
-        for k,v in data.summary.scores.items():
-            sample_score_logger.log_score(
-                scorer=k,
-                score=v.value
-            )
-            sample_score_logger.log_score(
-                scorer="correct_answer",
-                score=data.summary.target == v.value
-            )
-        sample_score_logger.finish()
-
-    async def enable(self) -> bool:
-        return "WANDB_API_KEY" in os.environ
 
 load_dotenv()
-
-weave.init("test-project")
 
 SYSTEM_MESSAGE = """
 Choose the most plausible continuation for the story.
@@ -61,7 +22,30 @@ def record_to_sample(record):
         )
     )
 
-@weave.op()
+@scorer(metrics=[accuracy(), stderr()])
+def includes(ignore_case: bool = True):
+
+    async def score(state: TaskState, target: Target):
+
+        # check for correct
+        answer = state.output.completion
+        target = target.text
+        if ignore_case:
+            correct = answer.lower().rfind(target.lower()) != -1
+        else:
+            correct = answer.rfind(target) != -1
+
+        # return score
+        return Score(
+            value = 1 if correct else 0,
+            answer=answer,
+            metadata={
+                "test": "test"
+            }
+        )
+
+    return score
+
 @task
 def hellaswag():
    
@@ -80,5 +64,5 @@ def hellaswag():
           system_message(SYSTEM_MESSAGE),
           multiple_choice()
         ],
-        scorer=choice(),
+        scorer=includes(),
     )
