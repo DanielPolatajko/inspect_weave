@@ -56,6 +56,7 @@ If you want to develop this project, you can fork and clone the repo and then ru
 
 ```bash
 pip install -e ".[dev]"
+pre-commit install
 ```
 
 to install for development locally.
