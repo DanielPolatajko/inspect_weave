@@ -3,7 +3,7 @@ import os
 
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks, TaskStart, TaskEnd
 import weave
-from inspect_weave.utils import format_model_name
+from inspect_weave.utils import format_model_name, format_score_types
 
 @hooks(name="weave_evaluation_hooks", description="Integration hooks for writing evaluation results to Weave")
 class WeaveEvaluationHooks(Hooks):
@@ -37,14 +37,14 @@ class WeaveEvaluationHooks(Hooks):
         )
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
-                sample_score_logger.log_score( # TODO: could we use the async method here?
+                sample_score_logger.log_score(
                     scorer=k,
-                    score=v.value if not isinstance(v.value, str) and not isinstance(v.value, list) else {"score": str(v.value)}  # TODO: handle different score return types
+                    score=format_score_types(v.value)
                  )
                 if v.metadata is not None and "category" in v.metadata:
                     sample_score_logger.log_score(
                         scorer=f"{k}_{v.metadata['category']}",
-                        score=v.value if not isinstance(v.value, str) and not isinstance(v.value, list) else {"score": str(v.value)}
+                        score=format_score_types(v.value)
                     )
             sample_score_logger.finish()
 
