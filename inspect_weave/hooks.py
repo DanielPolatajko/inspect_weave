@@ -17,12 +17,19 @@ class WeaveEvaluationHooks(Hooks):
         weave.init(os.environ["WEAVE_PROJECT_NAME"])    
 
     async def on_run_end(self, data: RunEnd) -> None:
+        if self.weave_eval_logger is not None:
+            if not self.weave_eval_logger._is_finalized:
+                self.weave_eval_logger.finish()
         weave.finish()
 
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
         evaluation_name = f"{data.spec.task}_{data.spec.run_id}"
-        self.weave_eval_logger = weave.EvaluationLogger(name=evaluation_name, dataset=data.spec.dataset.name or "test_dataset", model=model_name)
+        self.weave_eval_logger = weave.EvaluationLogger(
+            name=evaluation_name,
+            dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
+            model=model_name
+        )
 
     async def on_task_end(self, data: TaskEnd) -> None:
         assert self.weave_eval_logger is not None
