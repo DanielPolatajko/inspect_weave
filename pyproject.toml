@@ -15,7 +15,7 @@ classifiers = [
 ]
 dependencies = [
   "inspect_ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai.git",
-  "weave",
+  "weave==0.51.54",
   "httpx[socks]",
 ]
 
