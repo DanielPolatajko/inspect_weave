@@ -1,9 +1,11 @@
+import os
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample, hf_dataset
 from inspect_ai.scorer import choice, scorer, accuracy, stderr, Score
 from inspect_ai.solver._task_state import TaskState, Target
 from inspect_ai.solver import multiple_choice, system_message
 from dotenv import load_dotenv
+import weave
 
 
 load_dotenv()
@@ -11,6 +13,8 @@ load_dotenv()
 SYSTEM_MESSAGE = """
 Choose the most plausible continuation for the story.
 """
+
+weave.init(os.environ["WEAVE_PROJECT_NAME"])
 
 def record_to_sample(record):
     return Sample(
@@ -22,6 +26,7 @@ def record_to_sample(record):
         )
     )
 
+@weave.op()
 @scorer(metrics=[accuracy(), stderr()])
 def includes(ignore_case: bool = True):
 
