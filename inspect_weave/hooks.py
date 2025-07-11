@@ -4,6 +4,7 @@ import os
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks, TaskStart, TaskEnd
 import weave
 from inspect_weave.utils import format_model_name, format_score_types
+from weave.trace.settings import UserSettings
 
 @hooks(name="weave_evaluation_hooks", description="Integration hooks for writing evaluation results to Weave")
 class WeaveEvaluationHooks(Hooks):
@@ -14,7 +15,12 @@ class WeaveEvaluationHooks(Hooks):
     weave_eval_logger: weave.EvaluationLogger | None = None
 
     async def on_run_start(self, data: RunStart) -> None:
-        weave.init(os.environ["WEAVE_PROJECT_NAME"])    
+        weave.init(
+            project_name=os.environ["WEAVE_PROJECT_NAME"],
+            settings=UserSettings(
+                print_call_link=False
+            )
+        )    
 
     async def on_run_end(self, data: RunEnd) -> None:
         if self.weave_eval_logger is not None:
