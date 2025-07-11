@@ -33,17 +33,13 @@ wandb login
 
 in the Inspect execution environment and follow the outlined steps.
 
-You should then set the `WEAVE_PROJECT_NAME` environment variable with your project name (you can optionally prefix this with a Weave team name if you are part of multiple teams) e.g.
+You should then set the project which you'd like to write eval results to. This can be done with:
 
 ```bash
-export WEAVE_PROJECT_NAME="test-project"
+wandb init
 ```
 
-or with a team name, say `test-team`:
-
-```bash
-export WEAVE_PROJECT_NAME="test-team/test-project"
-```
+`inspect_weave` will then use whatever project you set as default during the `wandb init` flow when writing to Weave.
 
 ### Running Inspect with the integration
 

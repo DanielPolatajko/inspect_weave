@@ -1,10 +1,8 @@
 
-import os
-
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
-from inspect_weave.utils import format_model_name, format_score_types
+from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
 
 @hooks(name="weave_evaluation_hooks", description="Integration hooks for writing evaluation results to Weave")
 class WeaveEvaluationHooks(Hooks):
@@ -16,7 +14,7 @@ class WeaveEvaluationHooks(Hooks):
 
     async def on_run_start(self, data: RunStart) -> None:
         weave.init(
-            project_name=os.environ["WEAVE_PROJECT_NAME"],
+            project_name=read_wandb_project_name_from_settings(),
             settings=UserSettings(
                 print_call_link=False
             )
@@ -62,7 +60,6 @@ class WeaveEvaluationHooks(Hooks):
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
-        weave_project_present = os.environ.get("WEAVE_PROJECT_NAME") is not None
-        if not weave_project_present:
-            raise ValueError("WEAVE_PROJECT_NAME is not set, must be set in the environment to use Weave Evaluation Hooks")
+        # Will error if wandb project is not set
+        read_wandb_project_name_from_settings()
         return True
