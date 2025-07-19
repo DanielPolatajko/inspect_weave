@@ -105,10 +105,12 @@ def test_read_wandb_project_name_from_settings(tmp_path: Path) -> None:
     # Then
     assert project_name == "test-entity/test-project"
 
-def test_read_wandb_project_name_from_settings_raises_error_if_settings_file_not_found(tmp_path: Path) -> None:
+def test_read_wandb_project_name_from_settings_returns_none_if_settings_file_not_found(tmp_path: Path) -> None:
     # Given
     os.chdir(tmp_path)
 
     # When
-    with pytest.raises(ValueError, match="Wandb settings file not found, please run `wandb init` to set up a project"):
-        read_wandb_project_name_from_settings()
+    project_name = read_wandb_project_name_from_settings()
+
+    # Then
+    assert project_name is None
