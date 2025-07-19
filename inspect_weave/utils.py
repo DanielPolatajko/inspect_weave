@@ -22,10 +22,10 @@ def format_score_types(score_value: Value) -> ScoreType:
     else:
         return score_value
 
-def read_wandb_project_name_from_settings() -> str:
+def read_wandb_project_name_from_settings() -> str | None:
     settings_path = Path(wandb_dir()) / "settings"
     if not settings_path.exists():
-        raise ValueError("Wandb settings file not found, please run `wandb init` to set up a project")
+        return None
     with open(settings_path, "r") as f:
         settings = configparser.ConfigParser()
         settings.read_file(f)

@@ -3,6 +3,9 @@ from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks, TaskStar
 import weave
 from weave.trace.settings import UserSettings
 from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
+from logging import getLogger
+
+logger = getLogger("WeaveEvaluationHooks")
 
 @hooks(name="weave_evaluation_hooks", description="Integration hooks for writing evaluation results to Weave")
 class WeaveEvaluationHooks(Hooks):
@@ -61,5 +64,7 @@ class WeaveEvaluationHooks(Hooks):
 
     def enabled(self) -> bool:
         # Will error if wandb project is not set
-        read_wandb_project_name_from_settings()
+        if not read_wandb_project_name_from_settings():
+            logger.warning("Wandb project name not found, skipping Weave evaluation hooks. Please run `wandb init` to set up a project.")
+            return False
         return True
