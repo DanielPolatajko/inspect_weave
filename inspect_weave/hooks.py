@@ -16,8 +16,11 @@ class WeaveEvaluationHooks(Hooks):
     weave_eval_logger: weave.EvaluationLogger | None = None
 
     async def on_run_start(self, data: RunStart) -> None:
+        project_name = read_wandb_project_name_from_settings(logger=logger)
+        if project_name is None:
+            return
         weave.init(
-            project_name=read_wandb_project_name_from_settings(),
+            project_name=project_name,
             settings=UserSettings(
                 print_call_link=False
             )
@@ -64,7 +67,6 @@ class WeaveEvaluationHooks(Hooks):
 
     def enabled(self) -> bool:
         # Will error if wandb project is not set
-        if not read_wandb_project_name_from_settings():
-            logger.warning("Wandb project name not found, skipping Weave evaluation hooks. Please run `wandb init` to set up a project.")
+        if read_wandb_project_name_from_settings(logger=logger) is None:
             return False
         return True
