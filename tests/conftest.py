@@ -43,7 +43,7 @@ def register_hooks_for_testing(weave_evaluation_hooks_with_mocked_client_deps: t
 @pytest.fixture(scope="function")
 def inspect_eval_and_weave_mocks(register_hooks_for_testing: dict[str, MagicMock]) -> dict[str, Callable[[], list[EvalLog]] | MagicMock]:
     """
-    Returns a function that can be called to run an inspect eval.
+    Returns a mock Inspect eval plus a set of mocks that can be used to check that Weave was called correctly.
     """
     @task
     def hello_world():
