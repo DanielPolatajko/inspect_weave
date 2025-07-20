@@ -4,7 +4,7 @@ import configparser
 import os
 from pathlib import Path
 from unittest.mock import MagicMock
-from inspect_ai.hooks import SampleEnd
+from inspect_ai.hooks import SampleEnd, TaskEnd
 from inspect_ai.model import ChatCompletionChoice, ModelOutput, ChatMessageAssistant
 from inspect_ai.log import EvalSample
 from inspect_weave.hooks import WeaveEvaluationHooks
@@ -79,6 +79,22 @@ class TestWeaveEvaluationHooks:
             dataset="test_dataset",
             model="mockllm__model"
         )
+
+    @pytest.mark.asyncio
+    async def test_weave_evaluation_logger_finish_called_on_task_end(self) -> None:
+        # Given
+        hooks = WeaveEvaluationHooks()
+        hooks.weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
+
+        # When
+        await hooks.on_task_end(TaskEnd(
+            run_id="test_run_id",
+            eval_id="test_eval_id",
+            log=MagicMock(spec=EvalLog)
+        ))
+
+        # Then
+        hooks.weave_eval_logger.finish.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_writes_eval_score_to_weave_on_sample_end(self) -> None:
