@@ -45,6 +45,10 @@ wandb init
 
 Once you have performed the above steps, the integration will be enabled for future Inspect runs in your environment by default. The Inspect logger output will link to the Weave dashboard where you can track and visualise eval results.
 
+### Disabling the integration
+
+You can disable the Weave integration by running `wandb init -m disabled`.
+
 
 ## Development
 
