@@ -68,7 +68,3 @@ We write unit tests with `pytest`. Currently these are very limited, but if you 
 ## Project notes
 
 This project in a work-in-progress, being developed as a [MARS](https://www.cambridgeaisafety.org/mars) project by [DanielPolatajko](https://github.com/DanielPolatajko), [Qi Guo](https://github.com/Esther-Guo), [Matan Shtepel](https://github.com/GnarlyMshtep), and supervised by Justin Olive. We are open to feature requests and suggestions for future directions (including extensions of this integration as well as other possible Inspect integrations).
-
-### Compatability warning
-
-This project currently depends on unreleased changes from the core Inspect library, so for the meantime we have the main branch of the Inspect repo in the project dependencies. This might cause some compatability issues, but we will update upon the next release.
