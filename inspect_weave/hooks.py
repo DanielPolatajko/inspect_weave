@@ -1,9 +1,9 @@
-
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
 from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
 from logging import getLogger
+from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
 
 logger = getLogger("WeaveEvaluationHooks")
 
@@ -13,8 +13,7 @@ class WeaveEvaluationHooks(Hooks):
     Provides Inspect hooks for writing eval scores to the Weave Evaluations API.
     """
 
-    weave_eval_logger: weave.EvaluationLogger | None = None
-
+    weave_eval_logger: CustomEvaluationLogger | None = None
     async def on_run_start(self, data: RunStart) -> None:
         project_name = read_wandb_project_name_from_settings(logger=logger)
         if project_name is None:
@@ -35,10 +34,11 @@ class WeaveEvaluationHooks(Hooks):
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
         evaluation_name = f"{data.spec.task}_{data.spec.run_id}"
-        self.weave_eval_logger = weave.EvaluationLogger(
+        self.weave_eval_logger = CustomEvaluationLogger(
             name=evaluation_name,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
-            model=model_name
+            model=model_name,
+            extra_attributes=data.spec.metadata or {"test": "test"}
         )
 
     async def on_task_end(self, data: TaskEnd) -> None:
@@ -57,12 +57,7 @@ class WeaveEvaluationHooks(Hooks):
                 sample_score_logger.log_score(
                     scorer=k,
                     score=format_score_types(v.value)
-                 )
-                if v.metadata is not None and "category" in v.metadata:
-                    sample_score_logger.log_score(
-                        scorer=f"{k}_{v.metadata['category']}",
-                        score=format_score_types(v.value)
-                    )
+                )
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
