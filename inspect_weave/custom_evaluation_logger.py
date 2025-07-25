@@ -2,12 +2,13 @@ from __future__ import annotations
 from types import MethodType
 from typing import Annotated, Any, TypeVar, Union, cast
 import logging
-
+import json
 from pydantic import (
     BaseModel,
     BeforeValidator,
     Field,
     PrivateAttr,
+    ConfigDict,
 )
 
 import weave
@@ -19,13 +20,112 @@ from weave.trace.context import call_context
 from weave.trace.context.weave_client_context import require_weave_client
 from weave.trace.op import Op
 from weave.trace.weave_client import Call
-from weave.flow.eval_imperative import _set_current_output, _set_current_summary, _cast_to_cls, _cast_to_imperative_dataset, _default_dataset_name, _cleanup_evaluation, _active_evaluation_loggers, current_output, current_predict_call, current_summary, IMPERATIVE_EVAL_MARKER, ScoreLogger
+from weave.flow.eval_imperative import _set_current_output, _set_current_score, _set_current_summary, _cast_to_cls, _cast_to_imperative_dataset, _default_dataset_name, _cleanup_evaluation, _active_evaluation_loggers, current_output, current_predict_call, current_score, current_summary, IMPERATIVE_EVAL_MARKER, IMPERATIVE_SCORE_MARKER, global_scorer_cache
+from weave.flow.scorer import Scorer
+
 
 T = TypeVar("T")
 ID = str
 ScoreType = Union[float, bool, dict]
 
 logger = logging.getLogger(__name__)
+
+class CustomScoreLogger(BaseModel):
+    """This class provides an imperative interface for logging scores."""
+
+    # model_id: ID
+    predict_and_score_call: Call
+    evaluate_call: Call
+    predict_call: Call
+
+    _captured_scores: dict[str, ScoreType] = PrivateAttr(default_factory=dict)
+    _has_finished: bool = PrivateAttr(False)
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def finish(self) -> None:
+        if self._has_finished:
+            logger.warn("(NO-OP): Already called finish, returning.")
+            return
+
+        scores = self._captured_scores
+
+        wc = require_weave_client()
+        wc.finish_call(
+            self.predict_and_score_call,
+            output={
+                "output": self.predict_call.output,
+                "scores": scores,
+                "model_latency": None,
+            },
+        )
+
+        self._has_finished = True
+
+    def log_score(self, scorer: Scorer | dict | str, score: ScoreType, metadata: dict[str, Any] | None = None) -> None:
+        """Log a score synchronously."""
+        import asyncio
+
+        # When in an active asyncio test environment (like pytest.mark.asyncio),
+        # we need special handling to avoid "already running" errors
+        try:
+            loop = asyncio.get_running_loop()
+            if asyncio.current_task() is not None:
+                # We're in an async context, just run the coroutine synchronously
+                import nest_asyncio
+
+                nest_asyncio.apply()
+                return loop.run_until_complete(self.alog_score(scorer, score, metadata=metadata))
+            else:
+                # We're not in an async context, but a loop exists
+                return loop.run_until_complete(self.alog_score(scorer, score, metadata=metadata))
+        except RuntimeError:
+            # No event loop exists, create one with asyncio.run
+            return asyncio.run(self.alog_score(scorer, score, metadata=metadata))
+
+    async def alog_score(
+        self,
+        scorer: Annotated[
+            Scorer | dict | str,
+            Field(
+                description="A metadata-only scorer used for comparisons."
+                "Alternatively, you can pass a dict of attributes or just a string"
+                "representing the ID of your scorer."
+            ),
+        ],
+        score: ScoreType,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        if not isinstance(scorer, Scorer):
+            scorer_id = json.dumps(scorer)
+            scorer = global_scorer_cache.get_scorer(
+                scorer_id, lambda: _cast_to_cls(Scorer)(scorer)
+            )
+        if self._has_finished:
+            raise ValueError("Cannot log score after finish has been called")
+
+        # this is safe; pydantic casting is done in validator above
+        scorer = cast(Scorer, scorer)
+
+        @weave.op(name=scorer.name, enable_code_capture=False)
+        def score_method(self: Scorer, *, output: Any, inputs: Any) -> ScoreType:
+            # TODO: can't use score here because it will cause version mismatch
+            # return score
+            return cast(ScoreType, current_score.get())
+
+        scorer.__dict__["score"] = MethodType(score_method, scorer)
+
+        # attach the score feedback to the predict call
+        with call_context.set_call_stack(
+            [self.evaluate_call, self.predict_and_score_call]
+        ):
+            with _set_current_score(score):
+                with weave.attributes(IMPERATIVE_SCORE_MARKER | (metadata or {})):
+                    await self.predict_call.apply_scorer(scorer)
+
+        # this is always true because of how the scorer is created in the validator
+        scorer_name = cast(str, scorer.name)
+        self._captured_scores[scorer_name] = score
 
 class CustomEvaluationLogger(BaseModel):
     """This class provides an imperative interface for logging evaluations.
@@ -107,7 +207,7 @@ class CustomEvaluationLogger(BaseModel):
 
     # This private attr is used to keep track of predictions so we can finish
     # them if the user forgot to.
-    _accumulated_predictions: list[ScoreLogger] = PrivateAttr(default_factory=list)
+    _accumulated_predictions: list[CustomScoreLogger] = PrivateAttr(default_factory=list)
 
     def model_post_init(self, __context: Any) -> None:
         """Initialize the pseudo evaluation with the dataset from the model."""
@@ -223,7 +323,7 @@ class CustomEvaluationLogger(BaseModel):
 
         self._is_finalized = True
 
-    def log_prediction(self, inputs: dict, output: Any) -> ScoreLogger:
+    def log_prediction(self, inputs: dict, output: Any) -> CustomScoreLogger:
         """Log a prediction to the Evaluation, and return a reference.
 
         The reference can be used to log scores which are attached to the specific
@@ -246,7 +346,7 @@ class CustomEvaluationLogger(BaseModel):
             raise ValueError("predict_call should not be None")
 
         assert self._evaluate_call is not None
-        pred = ScoreLogger(
+        pred = CustomScoreLogger(
             predict_and_score_call=predict_and_score_call,
             evaluate_call=self._evaluate_call,
             predict_call=predict_call,

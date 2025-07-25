@@ -56,7 +56,8 @@ class WeaveEvaluationHooks(Hooks):
             for k,v in data.sample.scores.items():
                 sample_score_logger.log_score(
                     scorer=k,
-                    score=format_score_types(v.value)
+                    score=format_score_types(v.value),
+                    metadata=v.metadata or {"test": "test"}
                 )
             sample_score_logger.finish()
 
