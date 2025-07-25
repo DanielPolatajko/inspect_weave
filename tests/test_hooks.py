@@ -77,7 +77,8 @@ class TestWeaveEvaluationHooks:
         weave_evaluation_logger.assert_called_once_with(
             name=f"hello_world_{run_id}",
             dataset="test_dataset",
-            model="mockllm__model"
+            model="mockllm__model",
+            eval_attributes={}
         )
 
     @pytest.mark.asyncio
@@ -129,6 +130,7 @@ class TestWeaveEvaluationHooks:
         )
         mock_score_logger.log_score.assert_called_once_with(
             scorer="test_score",
-            score=1.0
+            score=1.0,
+            metadata=None
         )
         mock_score_logger.finish.assert_called_once()

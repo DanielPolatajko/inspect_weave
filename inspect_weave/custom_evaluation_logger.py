@@ -113,7 +113,7 @@ class CustomEvaluationLogger(EvaluationLogger):
         ```
     """
 
-    extra_attributes: Annotated[
+    eval_attributes: Annotated[
         dict[str, str],
         Field(
             default_factory=dict,
@@ -123,7 +123,7 @@ class CustomEvaluationLogger(EvaluationLogger):
 
     @property
     def attributes(self) -> dict[str, Any]:
-        return IMPERATIVE_EVAL_MARKER | self.extra_attributes
+        return IMPERATIVE_EVAL_MARKER | self.eval_attributes
 
     def model_post_init(self, __context: Any) -> None:
         """Initialize the pseudo evaluation with the dataset from the model."""

@@ -38,7 +38,7 @@ class WeaveEvaluationHooks(Hooks):
             name=evaluation_name,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
             model=model_name,
-            extra_attributes=data.spec.metadata or {}
+            eval_attributes=data.spec.metadata or {}
         )
 
     async def on_task_end(self, data: TaskEnd) -> None:
@@ -57,7 +57,7 @@ class WeaveEvaluationHooks(Hooks):
                 sample_score_logger.log_score(
                     scorer=k,
                     score=format_score_types(v.value),
-                    metadata=v.metadata or {"test": "test"}
+                    metadata=v.metadata
                 )
             sample_score_logger.finish()
 
