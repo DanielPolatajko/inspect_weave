@@ -4,6 +4,7 @@ import weave
 from weave.trace.settings import UserSettings
 from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
 from logging import getLogger
+import wandb
 
 logger = getLogger("WeaveEvaluationHooks")
 
@@ -14,7 +15,6 @@ class WeaveEvaluationHooks(Hooks):
     """
 
     weave_eval_logger: weave.EvaluationLogger | None = None
-
     async def on_run_start(self, data: RunStart) -> None:
         project_name = read_wandb_project_name_from_settings(logger=logger)
         if project_name is None:
@@ -25,12 +25,20 @@ class WeaveEvaluationHooks(Hooks):
                 print_call_link=False
             )
         )
+        wandb.init(
+            project=project_name.split("/")[1],
+            entity=project_name.split("/")[0],
+            id=data.run_id
+        )
+        assert wandb.run is not None
+        wandb.run.link_model(path="", registered_model_name=data.run_id)
 
     async def on_run_end(self, data: RunEnd) -> None:
         if self.weave_eval_logger is not None:
             if not self.weave_eval_logger._is_finalized:
                 self.weave_eval_logger.finish()
         weave.finish()
+        wandb.finish()
 
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
@@ -63,6 +71,8 @@ class WeaveEvaluationHooks(Hooks):
                         scorer=f"{k}_{v.metadata['category']}",
                         score=format_score_types(v.value)
                     )
+                    assert wandb.run is not None
+                    wandb.run.log({f"{k}_{v.metadata['category']}": format_score_types(v.value)})
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
