@@ -4,11 +4,7 @@ from typing import Annotated, Any, TypeVar, Union, cast
 import logging
 import json
 from pydantic import (
-    BaseModel,
-    BeforeValidator,
     Field,
-    PrivateAttr,
-    ConfigDict,
 )
 
 import weave
@@ -19,8 +15,7 @@ from weave.flow.scorer import auto_summarize as auto_summarize_fn
 from weave.trace.context import call_context
 from weave.trace.context.weave_client_context import require_weave_client
 from weave.trace.op import Op
-from weave.trace.weave_client import Call
-from weave.flow.eval_imperative import _set_current_output, _set_current_score, _set_current_summary, _cast_to_cls, _cast_to_imperative_dataset, _default_dataset_name, _cleanup_evaluation, _active_evaluation_loggers, current_output, current_predict_call, current_score, current_summary, IMPERATIVE_EVAL_MARKER, IMPERATIVE_SCORE_MARKER, global_scorer_cache
+from weave.flow.eval_imperative import _set_current_output, _set_current_score, _set_current_summary, _cast_to_cls,  _active_evaluation_loggers, current_output, EvaluationLogger, ScoreLogger,current_predict_call, current_score, current_summary, IMPERATIVE_EVAL_MARKER, IMPERATIVE_SCORE_MARKER, global_scorer_cache
 from weave.flow.scorer import Scorer
 
 
@@ -30,37 +25,8 @@ ScoreType = Union[float, bool, dict]
 
 logger = logging.getLogger(__name__)
 
-class CustomScoreLogger(BaseModel):
+class CustomScoreLogger(ScoreLogger):
     """This class provides an imperative interface for logging scores."""
-
-    # model_id: ID
-    predict_and_score_call: Call
-    evaluate_call: Call
-    predict_call: Call
-
-    _captured_scores: dict[str, ScoreType] = PrivateAttr(default_factory=dict)
-    _has_finished: bool = PrivateAttr(False)
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    def finish(self) -> None:
-        if self._has_finished:
-            logger.warn("(NO-OP): Already called finish, returning.")
-            return
-
-        scores = self._captured_scores
-
-        wc = require_weave_client()
-        wc.finish_call(
-            self.predict_and_score_call,
-            output={
-                "output": self.predict_call.output,
-                "scores": scores,
-                "model_latency": None,
-            },
-        )
-
-        self._has_finished = True
 
     def log_score(self, scorer: Scorer | dict | str, score: ScoreType, metadata: dict[str, Any] | None = None) -> None:
         """Log a score synchronously."""
@@ -127,7 +93,7 @@ class CustomScoreLogger(BaseModel):
         scorer_name = cast(str, scorer.name)
         self._captured_scores[scorer_name] = score
 
-class CustomEvaluationLogger(BaseModel):
+class CustomEvaluationLogger(EvaluationLogger):
     """This class provides an imperative interface for logging evaluations.
 
     An evaluation is started automatically when the first prediction is logged
@@ -147,38 +113,6 @@ class CustomEvaluationLogger(BaseModel):
         ```
     """
 
-    name: Annotated[
-        str | None,
-        Field(
-            default=None,
-            description="(Optional): A name for the evaluation call."
-            "If not provided, a default name will be generated.",
-        ),
-    ]
-    model: Annotated[
-        Model | dict | str,
-        BeforeValidator(_cast_to_cls(Model)),
-        Field(
-            default_factory=Model,
-            description="(Optional): A metadata-only Model used for comparisons."
-            "Alternatively, you can pass a dict of attributes or just a string"
-            "representing the ID of your model.",
-        ),
-    ]
-    dataset: Annotated[
-        Dataset | list[dict] | str,
-        BeforeValidator(_cast_to_imperative_dataset),
-        Field(
-            default_factory=lambda: Dataset(
-                rows=weave.Table([{"dataset_id": _default_dataset_name()}]),
-            ),
-            description="(Optional): A metadata-only Dataset used for comparisons."
-            "If you already know your rows ahead of time, you can pass either"
-            "a Dataset or list[dict]."
-            "If you don't, you can just pass any string as a unique identifier",
-        ),
-    ]
-
     extra_attributes: Annotated[
         dict[str, str],
         Field(
@@ -187,27 +121,9 @@ class CustomEvaluationLogger(BaseModel):
         ),
     ]
 
-    _eval_started: bool = PrivateAttr(False)
-    _logged_summary: bool = PrivateAttr(False)
-    _is_finalized: bool = PrivateAttr(False)
-    _evaluate_call: Call | None = PrivateAttr(None)
-    _pseudo_evaluation: Evaluation = PrivateAttr()
-
-    @property
-    def ui_url(self) -> str | None:
-        # In normal usage, _evaluate_call will never be None because it's set
-        # at init time.
-        if self._evaluate_call is None:
-            return None
-        return self._evaluate_call.ui_url
-
     @property
     def attributes(self) -> dict[str, Any]:
         return IMPERATIVE_EVAL_MARKER | self.extra_attributes
-
-    # This private attr is used to keep track of predictions so we can finish
-    # them if the user forgot to.
-    _accumulated_predictions: list[CustomScoreLogger] = PrivateAttr(default_factory=list)
 
     def model_post_init(self, __context: Any) -> None:
         """Initialize the pseudo evaluation with the dataset from the model."""
@@ -278,50 +194,6 @@ class CustomEvaluationLogger(BaseModel):
         )
         assert self._evaluate_call is not None
         call_context.push_call(self._evaluate_call)
-
-    def _cleanup_predictions(self) -> None:
-        if self._is_finalized:
-            return
-
-        for pred in self._accumulated_predictions:
-            if pred._has_finished:
-                continue
-            try:
-                pred.finish()
-            except Exception:
-                # This is best effort.  If we fail, just swallow the error.
-                pass
-
-    def _finalize_evaluation(self, output: Any = None) -> None:
-        """Handles the final steps of the evaluation: cleaning up predictions and finishing the main call."""
-        if self._is_finalized:
-            return
-
-        self._cleanup_predictions()
-
-        assert (
-            self._evaluate_call is not None
-        ), "Evaluation call should exist for finalization"
-
-        # Finish the evaluation call
-        wc = require_weave_client()
-        # Ensure the call is finished even if there was an error during summarize or elsewhere
-        try:
-            wc.finish_call(self._evaluate_call, output=output)
-        except Exception:
-            # Log error but continue cleanup
-            logger.error(
-                "Failed to finish evaluation call during finalization.", exc_info=True
-            )
-
-        # Pop the call regardless of finish success
-        try:
-            call_context.pop_call(self._evaluate_call.id)
-        except Exception:
-            # If popping fails (e.g., context already unwound), log and ignore
-            logger.warning("Failed to pop evaluation call from context.", exc_info=True)
-
-        self._is_finalized = True
 
     def log_prediction(self, inputs: dict, output: Any) -> CustomScoreLogger:
         """Log a prediction to the Evaluation, and return a reference.
@@ -399,23 +271,3 @@ class CustomEvaluationLogger(BaseModel):
             # Even if summarize fails, try to finalize with the calculated summary
 
         self._finalize_evaluation(output=final_summary)
-
-    def finish(self) -> None:
-        """Clean up the evaluation resources explicitly without logging a summary.
-
-        Ensures all prediction calls and the main evaluation call are finalized.
-        This is automatically called if the logger is used as a context manager.
-        """
-        if self._is_finalized:
-            return
-
-        # Finalize with None output, indicating closure without summary
-        self._finalize_evaluation(output=None)
-
-        # Remove from global registry since we've manually finalized
-        if self in _active_evaluation_loggers:
-            _active_evaluation_loggers.remove(self)
-
-    def __del__(self) -> None:
-        """Ensure cleanup happens during garbage collection."""
-        _cleanup_evaluation(self)
