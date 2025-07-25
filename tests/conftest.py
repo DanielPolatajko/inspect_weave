@@ -56,6 +56,7 @@ def inspect_eval_and_weave_mocks(register_hooks_for_testing: dict[str, MagicMock
             ],
             solver=[generate()],
             scorer=exact(),
+            metadata={"test": "test"}
         )
 
     return {

@@ -78,7 +78,7 @@ class TestWeaveEvaluationHooks:
             name=f"hello_world_{run_id}",
             dataset="test_dataset",
             model="mockllm__model",
-            eval_attributes={}
+            eval_attributes={"test": "test"}
         )
 
     @pytest.mark.asyncio
