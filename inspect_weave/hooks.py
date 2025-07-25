@@ -38,7 +38,7 @@ class WeaveEvaluationHooks(Hooks):
             name=evaluation_name,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
             model=model_name,
-            extra_attributes=data.spec.metadata or {"test": "test"}
+            extra_attributes=data.spec.metadata or {}
         )
 
     async def on_task_end(self, data: TaskEnd) -> None:
