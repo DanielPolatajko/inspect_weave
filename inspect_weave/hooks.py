@@ -54,10 +54,11 @@ class WeaveEvaluationHooks(Hooks):
         )
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
+                score_metadata = (v.metadata or {}) | ({"explanation": v.explanation} if v.explanation is not None else {})
                 sample_score_logger.log_score(
                     scorer=k,
                     score=format_score_types(v.value),
-                    metadata=v.metadata
+                    metadata=score_metadata
                 )
             sample_score_logger.finish()
 
