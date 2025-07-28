@@ -13,6 +13,10 @@ def format_model_name(model_name: str) -> str:
 
 def format_score_types(score_value: Value) -> ScoreType:
     if isinstance(score_value, str):
+        if score_value == "C":
+            return {"score": True}
+        elif score_value == "I":
+            return {"score": False}
         return {"score": score_value}
     elif isinstance(score_value, int):
         return float(score_value)
