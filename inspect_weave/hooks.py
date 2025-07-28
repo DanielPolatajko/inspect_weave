@@ -33,12 +33,11 @@ class WeaveEvaluationHooks(Hooks):
 
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
-        evaluation_name = f"{data.spec.task}_{data.spec.run_id}"
         self.weave_eval_logger = CustomEvaluationLogger(
-            name=evaluation_name,
+            name=data.spec.task,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
             model=model_name,
-            eval_attributes=data.spec.metadata or {}
+            eval_attributes=self._get_eval_metadata(data)
         )
 
     async def on_task_end(self, data: TaskEnd) -> None:
@@ -67,3 +66,11 @@ class WeaveEvaluationHooks(Hooks):
         if read_wandb_project_name_from_settings(logger=logger) is None:
             return False
         return True
+
+    def _get_eval_metadata(self, data: TaskStart) -> dict[str, str]:
+        eval_metadata = data.spec.metadata or {}
+        eval_metadata["inspect_run_id"] = data.run_id
+        eval_metadata["inspect_task_id"] = data.spec.task_id
+        eval_metadata["inspect_eval_id"] = data.eval_id
+        eval_metadata["inspect_task_args_passed"] = data.spec.task_args_passed
+        return eval_metadata
