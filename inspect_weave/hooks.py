@@ -1,9 +1,9 @@
-
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
 from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
 from logging import getLogger
+from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
 
 logger = getLogger("WeaveEvaluationHooks")
 
@@ -13,8 +13,7 @@ class WeaveEvaluationHooks(Hooks):
     Provides Inspect hooks for writing eval scores to the Weave Evaluations API.
     """
 
-    weave_eval_logger: weave.EvaluationLogger | None = None
-
+    weave_eval_logger: CustomEvaluationLogger | None = None
     async def on_run_start(self, data: RunStart) -> None:
         project_name = read_wandb_project_name_from_settings(logger=logger)
         if project_name is None:
@@ -34,11 +33,11 @@ class WeaveEvaluationHooks(Hooks):
 
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
-        evaluation_name = f"{data.spec.task}_{data.spec.run_id}"
-        self.weave_eval_logger = weave.EvaluationLogger(
-            name=evaluation_name,
+        self.weave_eval_logger = CustomEvaluationLogger(
+            name=data.spec.task,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
-            model=model_name
+            model=model_name,
+            eval_attributes=self._get_eval_metadata(data)
         )
 
     async def on_task_end(self, data: TaskEnd) -> None:
@@ -54,15 +53,12 @@ class WeaveEvaluationHooks(Hooks):
         )
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
+                score_metadata = (v.metadata or {}) | ({"explanation": v.explanation} if v.explanation is not None else {})
                 sample_score_logger.log_score(
                     scorer=k,
-                    score=format_score_types(v.value)
-                 )
-                if v.metadata is not None and "category" in v.metadata:
-                    sample_score_logger.log_score(
-                        scorer=f"{k}_{v.metadata['category']}",
-                        score=format_score_types(v.value)
-                    )
+                    score=format_score_types(v.value),
+                    metadata=score_metadata
+                )
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
@@ -70,3 +66,10 @@ class WeaveEvaluationHooks(Hooks):
         if read_wandb_project_name_from_settings(logger=logger) is None:
             return False
         return True
+
+    def _get_eval_metadata(self, data: TaskStart) -> dict[str, str]:
+        eval_metadata = data.spec.metadata or {}
+        eval_metadata["inspect_run_id"] = data.run_id
+        eval_metadata["inspect_task_id"] = data.spec.task_id
+        eval_metadata["inspect_eval_id"] = data.eval_id
+        return eval_metadata

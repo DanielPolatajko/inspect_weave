@@ -74,10 +74,18 @@ class TestWeaveEvaluationHooks:
         assert isinstance(weave_evaluation_logger, MagicMock)
         assert len(eval_logs) == 1
         run_id = eval_logs[0].eval.run_id
+        task_id = eval_logs[0].eval.task_id
+        eval_id = eval_logs[0].eval.eval_id
         weave_evaluation_logger.assert_called_once_with(
-            name=f"hello_world_{run_id}",
+            name="hello_world",
             dataset="test_dataset",
-            model="mockllm__model"
+            model="mockllm__model",
+            eval_attributes={
+                "test": "test",
+                "inspect_run_id": run_id,
+                "inspect_task_id": task_id,
+                "inspect_eval_id": eval_id,
+            }
         )
 
     @pytest.mark.asyncio
@@ -129,6 +137,45 @@ class TestWeaveEvaluationHooks:
         )
         mock_score_logger.log_score.assert_called_once_with(
             scorer="test_score",
-            score=1.0
+            score=1.0,
+            metadata={}
+        )
+        mock_score_logger.finish.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_writes_eval_score_to_weave_on_sample_end_with_metadata(self) -> None:
+        # Given
+        hooks = WeaveEvaluationHooks()
+        sample = SampleEnd(
+            run_id="test_run_id",
+            eval_id="test_eval_id",
+            sample_id="test_sample_id",
+            sample=EvalSample(
+                id=1,
+                epoch=1,
+                input="test_input",
+                target="test_output",
+                scores={"test_score": Score(value=1.0, metadata={"test": "test"})},
+                output=ModelOutput(model="mockllm/model", choices=[ChatCompletionChoice(message=ChatMessageAssistant(content="test_output"))])
+            )
+        )
+
+        mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
+        mock_score_logger = MagicMock(spec=weave.flow.eval_imperative.ScoreLogger)
+        mock_weave_eval_logger.log_prediction.return_value = mock_score_logger
+        hooks.weave_eval_logger = mock_weave_eval_logger
+
+        # When
+        await hooks.on_sample_end(sample)
+
+        # Then
+        mock_weave_eval_logger.log_prediction.assert_called_once_with(
+            inputs={"input": "test_input"},
+            output="test_output"
+        )
+        mock_score_logger.log_score.assert_called_once_with(
+            scorer="test_score",
+            score=1.0,
+            metadata={"test": "test"}
         )
         mock_score_logger.finish.assert_called_once()
