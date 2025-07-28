@@ -59,8 +59,11 @@ def inspect_eval_and_weave_mocks(register_hooks_for_testing: dict[str, MagicMock
             metadata={"test": "test"}
         )
 
+    def inspect_eval_callable() -> list[EvalLog]:
+        return inspect_eval(hello_world, model="mockllm/model")
+
     return {
-        "inspect_eval": lambda: inspect_eval(hello_world, model="mockllm/model"),
+        "inspect_eval": inspect_eval_callable,
     } | register_hooks_for_testing
 
 @pytest.fixture(scope="function")

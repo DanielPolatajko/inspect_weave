@@ -76,7 +76,6 @@ class TestWeaveEvaluationHooks:
         run_id = eval_logs[0].eval.run_id
         task_id = eval_logs[0].eval.task_id
         eval_id = eval_logs[0].eval.eval_id
-        task_args_passed = eval_logs[0].eval.task_args_passed
         weave_evaluation_logger.assert_called_once_with(
             name="hello_world",
             dataset="test_dataset",
@@ -86,7 +85,6 @@ class TestWeaveEvaluationHooks:
                 "inspect_run_id": run_id,
                 "inspect_task_id": task_id,
                 "inspect_eval_id": eval_id,
-                "inspect_task_args_passed": task_args_passed
             }
         )
 

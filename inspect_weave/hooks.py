@@ -72,5 +72,4 @@ class WeaveEvaluationHooks(Hooks):
         eval_metadata["inspect_run_id"] = data.run_id
         eval_metadata["inspect_task_id"] = data.spec.task_id
         eval_metadata["inspect_eval_id"] = data.eval_id
-        eval_metadata["inspect_task_args_passed"] = data.spec.task_args_passed
         return eval_metadata
