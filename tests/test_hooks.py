@@ -6,11 +6,37 @@ from pathlib import Path
 from unittest.mock import MagicMock
 from inspect_ai.hooks import SampleEnd, TaskEnd
 from inspect_ai.model import ChatCompletionChoice, ModelOutput, ChatMessageAssistant
-from inspect_ai.log import EvalSample
+from inspect_ai.log import EvalSample, EvalResults, EvalScore, EvalMetric, EvalSpec, EvalConfig, EvalDataset
 from inspect_weave.hooks import WeaveEvaluationHooks
 from inspect_ai.scorer import Score
 import pytest
 import weave
+from datetime import datetime
+
+@pytest.fixture(scope="function")
+def task_end_eval_log() -> EvalLog:
+    return EvalLog(
+        eval=EvalSpec(
+            run_id="test_run_id",
+            task_id="test_task_id",
+            created=datetime.now().isoformat(),
+            task="test_task",
+            dataset=EvalDataset(),
+            model="mockllm/model",
+            config=EvalConfig()
+        ),
+        results=EvalResults(
+            total_samples=1,
+            scores=[
+                EvalScore(
+                    name="test_score",
+                    scorer="test_scorer",
+                    metrics={"test_metric": EvalMetric(name="test_metric", value=1.0)}
+                )
+            ]
+        )
+    )
+    
 
 class TestWeaveEvaluationHooks:
 
@@ -89,17 +115,19 @@ class TestWeaveEvaluationHooks:
         )
 
     @pytest.mark.asyncio
-    async def test_weave_evaluation_logger_finish_called_on_task_end(self) -> None:
+    async def test_weave_evaluation_logger_finish_called_on_task_end(self, task_end_eval_log: EvalLog) -> None:
         # Given
         hooks = WeaveEvaluationHooks()
         hooks.weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
 
         # When
-        await hooks.on_task_end(TaskEnd(
-            run_id="test_run_id",
-            eval_id="test_eval_id",
-            log=MagicMock(spec=EvalLog)
-        ))
+        await hooks.on_task_end(
+            TaskEnd(
+                run_id="test_run_id",
+                eval_id="test_eval_id",
+                log=task_end_eval_log
+            )
+        )
 
         # Then
         hooks.weave_eval_logger.finish.assert_called_once()
@@ -179,3 +207,29 @@ class TestWeaveEvaluationHooks:
             metadata={"test": "test"}
         )
         mock_score_logger.finish.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_writes_inspect_eval_summary_metrics_to_weave_on_task_end(self, task_end_eval_log: EvalLog) -> None:
+        # Given
+        hooks = WeaveEvaluationHooks()
+        task_end = TaskEnd(
+            run_id="test_run_id",
+            eval_id="test_eval_id",
+            log=task_end_eval_log
+        )
+
+        mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
+        hooks.weave_eval_logger = mock_weave_eval_logger
+
+        # When
+        await hooks.on_task_end(task_end)
+
+        # Then
+        expected_summary = {
+            "test_score": {
+                "test_metric": 1.0
+            }
+        }
+        mock_weave_eval_logger.log_summary.assert_called_once_with(
+            expected_summary
+        )
