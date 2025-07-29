@@ -42,7 +42,7 @@ class WeaveEvaluationHooks(Hooks):
 
     async def on_task_end(self, data: TaskEnd) -> None:
         assert self.weave_eval_logger is not None
-        summary = {}
+        summary: dict[str, dict[str, dict[int, float]]] = {}
         if data.log and data.log.results:
             for score in data.log.results.scores:
                 scorer_name = score.name
