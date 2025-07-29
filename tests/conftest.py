@@ -16,6 +16,9 @@ import inspect_ai.hooks._startup as hooks_startup_module
 from unittest.mock import patch
 from inspect_weave.providers import weave_evaluation_hooks
 
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 pytest_plugins = ["tests.conftest_weave_client"]
 
 

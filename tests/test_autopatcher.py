@@ -1,15 +1,9 @@
 import pytest
 import weave
-from typing import Generator
 from inspect_ai import task, Task, eval
 from inspect_ai.solver import generate
 from inspect_ai.scorer import exact
 from inspect_ai.dataset import Sample
-
-
-@pytest.fixture(scope="function")
-def patch_inspect() -> Generator[None, None, None]:
-    print("TODO: Implement")
 
 @pytest.mark.skip_clickhouse_client
 @pytest.mark.vcr(
@@ -18,7 +12,6 @@ def patch_inspect() -> Generator[None, None, None]:
 )
 def test_inspect_quickstart(
     client: weave.trace.weave_client.WeaveClient,
-    patch_inspect: None,
 ) -> None:
     @task
     def hello_world():
@@ -37,4 +30,5 @@ def test_inspect_quickstart(
     eval(hello_world, model="mockllm/model")
 
     calls = list(client.calls())
-    assert len(calls) == 1
+    assert len(calls) == 6
+    assert "inspect_task" in calls[0]._op_name
