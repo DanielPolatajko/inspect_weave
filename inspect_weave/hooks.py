@@ -81,4 +81,10 @@ class WeaveEvaluationHooks(Hooks):
         eval_metadata["inspect_run_id"] = data.run_id
         eval_metadata["inspect_task_id"] = data.spec.task_id
         eval_metadata["inspect_eval_id"] = data.eval_id
+        
+        # Add task_args as individual key-value pairs with eval_args prefix
+        if data.spec.task_args:
+            for key, value in data.spec.task_args.items():
+                eval_metadata[f"eval_args.{key}"] = str(value)
+        
         return eval_metadata
