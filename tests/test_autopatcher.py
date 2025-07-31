@@ -31,4 +31,4 @@ def test_inspect_quickstart(
 
     calls = list(client.calls())
     assert len(calls) == 6
-    assert "inspect_task" in calls[0]._op_name
+    assert "inspect_task" in calls[1]._op_name

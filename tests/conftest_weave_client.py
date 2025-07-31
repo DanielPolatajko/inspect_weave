@@ -398,10 +398,7 @@ def ensure_clickhouse_db(
 os.environ["WANDB_ERROR_REPORTING"] = "false"
 TEST_ENTITY = "shawn"
 def get_trace_server_flag(request):
-    if request.config.getoption("--clickhouse"):
-        return "clickhouse"
-    weave_server_flag = request.config.getoption("--trace-server")
-    return weave_server_flag
+    return "sqlite"
 
 
 def pytest_sessionfinish(session, exitstatus):
