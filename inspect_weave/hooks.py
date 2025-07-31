@@ -28,7 +28,7 @@ class WeaveEvaluationHooks(Hooks):
     async def on_run_end(self, data: RunEnd) -> None:
         if self.weave_eval_logger is not None:
             if not self.weave_eval_logger._is_finalized:
-                self.weave_eval_logger.finish()
+                self.weave_eval_logger.finish(exception=data.exception)
         weave.finish()
 
     async def on_task_start(self, data: TaskStart) -> None:
