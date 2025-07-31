@@ -4,6 +4,7 @@ from weave.trace.settings import UserSettings
 from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
 from logging import getLogger
 from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
+from inspect_weave.autopatcher import get_inspect_patcher, CustomAutopatchSettings
 
 logger = getLogger("WeaveEvaluationHooks")
 
@@ -24,12 +25,14 @@ class WeaveEvaluationHooks(Hooks):
                 print_call_link=False
             )
         )
+        get_inspect_patcher(CustomAutopatchSettings()).attempt_patch()
 
     async def on_run_end(self, data: RunEnd) -> None:
         if self.weave_eval_logger is not None:
             if not self.weave_eval_logger._is_finalized:
                 self.weave_eval_logger.finish()
         weave.finish()
+        get_inspect_patcher().undo_patch()
 
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 

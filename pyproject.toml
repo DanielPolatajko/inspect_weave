@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff", "mypy", "pre-commit"]
+dev = ["pytest", "ruff", "mypy", "pre-commit", "clickhouse-connect", "ddtrace", "opentelemetry-proto", "sqlparse", "boto3", "azure-storage-blob", "google-cloud-storage", "confluent-kafka"]
 
 [project.urls]
 Homepage = "https://github.com/DanielPolatajko/inspect_weave"
