@@ -4,6 +4,7 @@ from weave.trace.settings import UserSettings
 from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
 from logging import getLogger
 from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
+from inspect_weave.exceptions import WeaveEvaluationException
 
 logger = getLogger("WeaveEvaluationHooks")
 
@@ -28,7 +29,17 @@ class WeaveEvaluationHooks(Hooks):
     async def on_run_end(self, data: RunEnd) -> None:
         if self.weave_eval_logger is not None:
             if not self.weave_eval_logger._is_finalized:
-                self.weave_eval_logger.finish(exception=data.exception)
+                if data.exception is not None:
+                    self.weave_eval_logger.finish(exception=data.exception)
+                elif errors := [eval.error for eval in data.logs]:
+                    self.weave_eval_logger.finish(
+                        exception=WeaveEvaluationException(
+                            message="Inspect run failed", 
+                            error="\n".join([error.message for error in errors if error is not None])
+                        )
+                    )
+                else:
+                    self.weave_eval_logger.finish()
         weave.finish()
 
     async def on_task_start(self, data: TaskStart) -> None:
@@ -50,7 +61,6 @@ class WeaveEvaluationHooks(Hooks):
                     summary[scorer_name] = {}
                     for metric_name, metric in score.metrics.items():
                         summary[scorer_name][metric_name] = metric.value
-                        
         self.weave_eval_logger.log_summary(summary)
 
     async def on_sample_end(self, data: SampleEnd) -> None:
