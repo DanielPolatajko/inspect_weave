@@ -305,3 +305,19 @@ class CustomEvaluationLogger(EvaluationLogger):
             logger.warning("Failed to pop evaluation call from context.", exc_info=True)
 
         self._is_finalized = True
+
+    def finish(self, exception: BaseException | None = None) -> None:
+        """Clean up the evaluation resources explicitly without logging a summary.
+
+        Ensures all prediction calls and the main evaluation call are finalized.
+        This is automatically called if the logger is used as a context manager.
+        """
+        if self._is_finalized:
+            return
+
+        # Finalize with None output, indicating closure without summary
+        self._finalize_evaluation(output=None, exception=exception)
+
+        # Remove from global registry since we've manually finalized
+        if self in _active_evaluation_loggers:
+            _active_evaluation_loggers.remove(self)

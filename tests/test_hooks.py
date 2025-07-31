@@ -4,9 +4,10 @@ import configparser
 import os
 from pathlib import Path
 from unittest.mock import MagicMock
-from inspect_ai.hooks import SampleEnd, TaskEnd
+from inspect_ai.hooks import SampleEnd, TaskEnd, RunEnd
 from inspect_ai.model import ChatCompletionChoice, ModelOutput, ChatMessageAssistant
 from inspect_ai.log import EvalSample, EvalResults, EvalScore, EvalMetric, EvalSpec, EvalConfig, EvalDataset
+from inspect_ai._eval.eval import EvalLogs
 from inspect_weave.hooks import WeaveEvaluationHooks
 from inspect_ai.scorer import Score
 import pytest
@@ -232,4 +233,28 @@ class TestWeaveEvaluationHooks:
         }
         mock_weave_eval_logger.log_summary.assert_called_once_with(
             expected_summary
+        )
+
+    @pytest.mark.asyncio
+    async def test_passes_exception_to_weave_on_error_run_end(self) -> None:
+        # Given
+        e = Exception("test_exception")
+        hooks = WeaveEvaluationHooks()
+        task_end = RunEnd(
+            run_id="test_run_id",
+            logs=EvalLogs([]),       
+            exception=e
+        )
+
+        mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
+        mock_weave_eval_logger.finish = MagicMock()
+        mock_weave_eval_logger._is_finalized = False
+        hooks.weave_eval_logger = mock_weave_eval_logger
+
+        # When
+        await hooks.on_run_end(task_end)
+
+        # Then
+        mock_weave_eval_logger.finish.assert_called_once_with(
+            exception=e
         )
