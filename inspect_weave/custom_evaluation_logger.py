@@ -5,6 +5,7 @@ import logging
 import json
 from pydantic import (
     Field,
+    PrivateAttr,
 )
 
 import weave
@@ -120,6 +121,8 @@ class CustomEvaluationLogger(EvaluationLogger):
             description="(Optional): A dictionary of attributes to add to the evaluation.",
         ),
     ]
+
+    _is_finalized: bool = PrivateAttr(False)
 
     @property
     def attributes(self) -> dict[str, Any]:
@@ -271,3 +274,50 @@ class CustomEvaluationLogger(EvaluationLogger):
             # Even if summarize fails, try to finalize with the calculated summary
 
         self._finalize_evaluation(output=final_summary)
+
+    def _finalize_evaluation(self, output: Any = None, exception: BaseException | None = None) -> None:
+        """Handles the final steps of the evaluation: cleaning up predictions and finishing the main call."""
+        if self._is_finalized:
+            return
+
+        self._cleanup_predictions()
+
+        assert (
+            self._evaluate_call is not None
+        ), "Evaluation call should exist for finalization"
+
+        # Finish the evaluation call
+        wc = require_weave_client()
+        # Ensure the call is finished even if there was an error during summarize or elsewhere
+        try:
+            wc.finish_call(self._evaluate_call, output=output, exception=exception)
+        except Exception:
+            # Log error but continue cleanup
+            logger.error(
+                "Failed to finish evaluation call during finalization.", exc_info=True
+            )
+
+        # Pop the call regardless of finish success
+        try:
+            call_context.pop_call(self._evaluate_call.id)
+        except Exception:
+            # If popping fails (e.g., context already unwound), log and ignore
+            logger.warning("Failed to pop evaluation call from context.", exc_info=True)
+
+        self._is_finalized = True
+
+    def finish(self, exception: BaseException | None = None) -> None:
+        """Clean up the evaluation resources explicitly without logging a summary.
+
+        Ensures all prediction calls and the main evaluation call are finalized.
+        This is automatically called if the logger is used as a context manager.
+        """
+        if self._is_finalized:
+            return
+
+        # Finalize with None output, indicating closure without summary
+        self._finalize_evaluation(output=None, exception=exception)
+
+        # Remove from global registry since we've manually finalized
+        if self in _active_evaluation_loggers:
+            _active_evaluation_loggers.remove(self)

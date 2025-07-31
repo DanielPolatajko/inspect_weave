@@ -21,7 +21,7 @@ uv pip install git+https://github.com/DanielPolatajko/inspect_weave.git
 
 ### Weave setup
 
-In order to utilise the Weave integration, you will also need to setup a Weave project, authenticate your environment with W&B, and set some relevant environment variables.
+In order to utilise the Weave integration, you will also need to setup a Weave project, authenticate your environment with W&B, and initialise the wandb client.
 
 To get set up with a new Weave project. follow the instructions [here](https://weave-docs.wandb.ai/).
 

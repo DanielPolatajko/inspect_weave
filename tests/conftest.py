@@ -6,7 +6,7 @@ from pathlib import Path
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
 from inspect_ai.scorer import exact
-from inspect_ai.solver import generate
+from inspect_ai.solver import generate, Solver, TaskState, Generate, solver
 from inspect_ai import eval as inspect_eval
 from inspect_ai.log import EvalLog
 from unittest.mock import MagicMock
@@ -19,12 +19,14 @@ from inspect_weave.providers import weave_evaluation_hooks
 
 @pytest.fixture(scope="function")
 def weave_evaluation_hooks_with_mocked_client_deps():
+    patched_evaluation_logger_class = MagicMock(spec=CustomEvaluationLogger)
+    patched_evaluation_logger_class.return_value = patched_evaluation_logger_class
     with (
         patch("inspect_weave.hooks.weave.init", MagicMock()) as weave_init,
         patch("inspect_weave.hooks.weave.finish", MagicMock()) as weave_finish,
-        patch("inspect_weave.hooks.CustomEvaluationLogger", MagicMock(spec=CustomEvaluationLogger)) as weave_evaluation_logger
+        patch("inspect_weave.hooks.CustomEvaluationLogger", patched_evaluation_logger_class)
     ):
-        yield weave_evaluation_hooks(), weave_init, weave_finish, weave_evaluation_logger
+        yield weave_evaluation_hooks(), weave_init, weave_finish, patched_evaluation_logger_class
 
 @pytest.fixture(scope="function")
 def register_hooks_for_testing(weave_evaluation_hooks_with_mocked_client_deps: tuple[WeaveEvaluationHooks, MagicMock, MagicMock, MagicMock]) -> dict[str, MagicMock]:
@@ -61,6 +63,41 @@ def inspect_eval_and_weave_mocks(register_hooks_for_testing: dict[str, MagicMock
 
     def inspect_eval_callable() -> list[EvalLog]:
         return inspect_eval(hello_world, model="mockllm/model")
+
+    return {
+        "inspect_eval": inspect_eval_callable,
+    } | register_hooks_for_testing
+
+
+@solver
+def raise_error() -> Solver:
+    """Raises an error."""
+    async def solve(state: TaskState, generate: Generate) -> TaskState:
+        raise RuntimeError("Simulated failure")
+
+    return solve
+
+@pytest.fixture(scope="function")
+def inspect_eval_and_weave_mocks_with_error(register_hooks_for_testing: dict[str, MagicMock]) -> dict[str, Callable[[], list[EvalLog]] | MagicMock]:
+    """
+    Returns a mock Inspect eval plus a set of mocks that can be used to check that Weave was called correctly.
+    """
+    @task
+    def hello_world_with_error():
+        return Task(
+            dataset=[
+                Sample(
+                    input="Just reply with Hello World",
+                    target="Hello World",
+                )
+            ],
+            solver=[raise_error()],
+            scorer=exact(),
+            metadata={"test": "test"}
+        )
+
+    def inspect_eval_callable() -> list[EvalLog]:
+        return inspect_eval(hello_world_with_error, model="mockllm/model")
 
     return {
         "inspect_eval": inspect_eval_callable,
