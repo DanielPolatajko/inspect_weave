@@ -1,5 +1,5 @@
 models:
-  disabled: false
+  enabled: true
 
 weave:
-  disabled: false
+  enabled: true

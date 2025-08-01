@@ -94,7 +94,7 @@ class WeaveEvaluationHooks(Hooks):
     @override
     def enabled(self) -> bool:
         # Will error if wandb project is not set
-        if read_wandb_project_name_from_settings(logger=logger) is None or self.settings["weave"]["disabled"]:
+        if read_wandb_project_name_from_settings(logger=logger) is None or not self.settings["weave"]["enabled"]:
             return False
         return True
 

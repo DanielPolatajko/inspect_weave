@@ -14,7 +14,7 @@ from inspect_viz.plot import write_png_async
 from inspect_viz.view.beta import scores_heatmap
 from inspect_viz import Data
 from inspect_ai.analysis.beta import evals_df
-from inspect_weave.utils import parse_inspect_weave_settings
+from inspect_weave.utils import parse_inspect_weave_settings, wandb_dir
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +30,17 @@ class WandBModelHooks(Hooks):
 
     @override
     def enabled(self) -> bool:
-        return not self.settings["models"]["disabled"]
+        return self.settings["models"]["enabled"]
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        config_path: Path | None = Path("test-config.yaml")
-        config = {"test_config": "test"}
-
+        config_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
         run = wandb.init(id=data.run_id) 
 
-        if config_path:
-            wandb.save(config_path, base_path=config_path.parent, policy="now")
-        if config:
-            wandb.config.update(config)
+        wandb.save(config_path, base_path=config_path.parent, policy="now")
+        
+        if self.settings["models"].get("config"):
+            wandb.config.update(self.settings["models"]["config"])
 
         _ = run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
 

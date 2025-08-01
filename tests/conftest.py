@@ -11,10 +11,11 @@ from inspect_ai import eval as inspect_eval
 from inspect_ai.log import EvalLog
 from unittest.mock import MagicMock
 from inspect_weave.hooks import WeaveEvaluationHooks
-from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
+from inspect_weave.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
 import inspect_ai.hooks._startup as hooks_startup_module
 from unittest.mock import patch
 from inspect_weave.providers import weave_evaluation_hooks
+import yaml
 
 
 @pytest.fixture(scope="function")
@@ -116,6 +117,24 @@ def initialise_wandb(tmp_path: Path) -> None:
     os.makedirs(tmp_path / "wandb")
     with open(tmp_path / "wandb" / "settings", "w") as f:
         config.write(f)
+    os.chdir(tmp_path)
+
+@pytest.fixture(scope="function")
+def write_inspect_weave_settings(tmp_path: Path) -> None:
+    """
+    Writes a inspect-weave-settings.yaml file to the tmp_path directory.
+    """
+    settings = {
+        "weave": {
+            "enabled": True
+        },
+        "models": {
+            "enabled": True
+        }
+    }
+    os.makedirs(tmp_path / "wandb")
+    with open(tmp_path / "wandb" / "inspect-weave-settings.yaml", "w") as f:
+        yaml.dump(settings, f)
     os.chdir(tmp_path)
 
 
