@@ -64,7 +64,8 @@ class WeaveEvaluationHooks(Hooks):
                     summary[scorer_name] = {}
                     for metric_name, metric in score.metrics.items():
                         summary[scorer_name][metric_name] = metric.value
-        self.weave_eval_logger.log_summary(summary)
+        with weave.attributes({"test": "test"}):
+            self.weave_eval_logger.log_summary(summary)
 
     async def on_sample_end(self, data: SampleEnd) -> None:
         assert self.weave_eval_logger is not None
@@ -75,11 +76,12 @@ class WeaveEvaluationHooks(Hooks):
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
                 score_metadata = (v.metadata or {}) | ({"explanation": v.explanation} if v.explanation is not None else {})
-                sample_score_logger.log_score(
-                    scorer=k,
-                    score=format_score_types(v.value),
-                    metadata=score_metadata
-                )
+                with weave.attributes({"test": "test"}):
+                    sample_score_logger.log_score(
+                        scorer=k,
+                        score=format_score_types(v.value),
+                        metadata=score_metadata
+                    )
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
