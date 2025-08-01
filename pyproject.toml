@@ -14,9 +14,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-  "inspect_ai==0.3.114",
-  "weave==0.51.54",
-  "httpx[socks]"
+  "inspect_ai",
+  "weave",
+  "httpx[socks]",
+  "inspect_viz @ git+https://github.com/meridianlabs-ai/inspect_viz",
+  "playwright"
 ]
 
 [project.optional-dependencies]
