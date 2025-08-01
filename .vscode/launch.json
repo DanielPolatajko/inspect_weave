@@ -1,0 +1,26 @@
+{
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Inspect",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/inspect_weave_venv/bin/inspect",
+            "console": "integratedTerminal",
+            "args": [
+                "eval",
+                "hellaswag.py",
+                "--limit",
+                "5"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "name": "Python Debugger: Run Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+        }
+    ]
+}
