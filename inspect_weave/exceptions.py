@@ -8,3 +8,13 @@ class WeaveEvaluationException(Exception):
 
     def __str__(self) -> str:
         return f"{self.message}: {self.error}"
+
+class WandBNotInitialisedException(Exception):
+    """
+    Exception raised when W&B is not initialised.
+    """
+    def __init__(self):
+        self.message = "wandb settings file not found. Please run `wandb init` to set up a project."
+
+    def __str__(self) -> str:
+        return self.message

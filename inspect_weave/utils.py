@@ -7,6 +7,8 @@ from pathlib import Path
 import configparser
 from logging import Logger, getLogger
 import yaml
+from inspect_weave.exceptions import WandBNotInitialisedException
+
 utils_logger = getLogger(__name__)
 
 def format_model_name(model_name: str) -> str:
@@ -26,23 +28,34 @@ def format_score_types(score_value: Value) -> ScoreType:
     else:
         return score_value
 
-def read_wandb_project_name_from_settings(logger: Logger | None = None) -> str | None:
+def read_wandb_entity_and_project_name_from_settings(logger: Logger | None = None) -> tuple[str, str]:
     settings_path = Path(wandb_dir()) / "settings"
     if not settings_path.exists():
-        raise ValueError("Wandb settings file not found, please run `wandb init` to set up a project")
+        raise WandBNotInitialisedException()
     with open(settings_path, "r") as f:
         settings = configparser.ConfigParser()
         settings.read_file(f)
-    if "default" in settings and "mode" in settings["default"] and settings["default"]["mode"] == "disabled":
-        if logger is None:
-            utils_logger.warning("Weave evaluation hooks are currently disabled. Please run `wandb init` to enable.")
-        else:
-            logger.warning("Weave evaluation hooks are currently disabled. Please run `wandb init` to enable.")
-        return None
-    return f"{settings['default']['entity']}/{settings['default']['project']}"
+    return settings['default']['entity'], settings['default']['project']
 
 def parse_inspect_weave_settings() -> dict[str, Any]:
     settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
+    with open(settings_path, "r") as f:
+        print(f.read())
+    if not settings_path.exists():
+        entity, project_name = read_wandb_entity_and_project_name_from_settings()
+        utils_logger.warning(f"Inspect Weave settings file not found, please add a `inspect-weave-settings.yaml` file to the wandb directory if you want to configure the inspect_weave hooks. Proceeding with default settings. Entity: {entity}, Project: {project_name}")
+        return {
+            "weave": {
+                "enabled": True,
+                "entity": entity,
+                "project": project_name
+            },
+            "models": {
+                "enabled": True,
+                "entity": entity,
+                "project": project_name
+            }
+        }
     with open(settings_path, "r") as f:
         settings = yaml.safe_load(f)
     return settings

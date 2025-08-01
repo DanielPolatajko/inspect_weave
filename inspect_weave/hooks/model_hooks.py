@@ -14,7 +14,7 @@ from inspect_viz.plot import write_png_async
 from inspect_viz.view.beta import scores_heatmap
 from inspect_viz import Data
 from inspect_ai.analysis.beta import evals_df
-from inspect_weave.utils import parse_inspect_weave_settings, wandb_dir
+from inspect_weave.utils import parse_inspect_weave_settings, read_wandb_entity_and_project_name_from_settings, wandb_dir
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,8 @@ class WandBModelHooks(Hooks):
     @override
     async def on_run_start(self, data: RunStart) -> None:
         config_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
-        run = wandb.init(id=data.run_id) 
+        entity, project_name = read_wandb_entity_and_project_name_from_settings(logger=logger)
+        run = wandb.init(id=data.run_id, entity=entity, project=project_name) 
 
         wandb.save(config_path, base_path=config_path.parent, policy="now")
         
