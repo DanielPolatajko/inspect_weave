@@ -89,7 +89,14 @@ class WeaveEvaluationHooks(Hooks):
 
     def _get_eval_metadata(self, data: TaskStart) -> dict[str, str]:
         eval_metadata = data.spec.metadata or {}
+        eval_metadata["sample_count"] = str(data.spec.config.limit) if data.spec.config.limit is not None else str(data.spec.dataset.samples)
         eval_metadata["inspect_run_id"] = data.run_id
         eval_metadata["inspect_task_id"] = data.spec.task_id
         eval_metadata["inspect_eval_id"] = data.eval_id
+        
+        # Add task_args as individual key-value pairs with eval_args prefix
+        if data.spec.task_args:
+            for key, value in data.spec.task_args.items():
+                eval_metadata[f"eval_args.{key}"] = str(value)
+        
         return eval_metadata
