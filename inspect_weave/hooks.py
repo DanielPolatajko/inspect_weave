@@ -5,6 +5,7 @@ from inspect_weave.utils import format_model_name, format_score_types, read_wand
 from logging import getLogger
 from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
+from weave.trace.context import call_context
 
 logger = getLogger("WeaveEvaluationHooks")
 
@@ -50,6 +51,7 @@ class WeaveEvaluationHooks(Hooks):
             model=model_name,
             eval_attributes=self._get_eval_metadata(data)
         )
+        call_context.set_call_stack([self.weave_eval_logger._evaluate_call]).__enter__()
 
     async def on_task_end(self, data: TaskEnd) -> None:
         assert self.weave_eval_logger is not None
@@ -72,11 +74,11 @@ class WeaveEvaluationHooks(Hooks):
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
                 score_metadata = (v.metadata or {}) | ({"explanation": v.explanation} if v.explanation is not None else {})
-                sample_score_logger.log_score(
-                    scorer=k,
-                    score=format_score_types(v.value),
-                    metadata=score_metadata
-                )
+                with weave.attributes(score_metadata):
+                    sample_score_logger.log_score(
+                        scorer=k,
+                        score=format_score_types(v.value)
+                    )
             sample_score_logger.finish()
 
     def enabled(self) -> bool:
