@@ -19,6 +19,12 @@ __uv__
 uv pip install git+https://github.com/DanielPolatajko/inspect_weave.git
 ```
 
+If you intend to use the W&B Models API integration, you also need to subsequently install `chromium` with:
+
+```bash
+playwright install-deps chromium
+```
+
 ### Weave setup
 
 In order to utilise the Weave integration, you will also need to setup a Weave project, authenticate your environment with W&B, and initialise the wandb client.
