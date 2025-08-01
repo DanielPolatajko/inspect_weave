@@ -6,6 +6,9 @@ from logging import getLogger
 from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
 from weave.trace.context import call_context
+import json
+import os
+from datetime import datetime
 
 logger = getLogger("WeaveEvaluationHooks")
 
@@ -28,6 +31,20 @@ class WeaveEvaluationHooks(Hooks):
         )
 
     async def on_run_end(self, data: RunEnd) -> None:
+        # Dump entire run end data object to JSON file for debugging (recursive)
+        try:
+            os.makedirs("inspect_weave/logs", exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            filename = f"/Users/matanshtepel/Documents/School Related/research/research-dev/inspect_evals/venv/lib/python3.13/site-packages/inspect_weave/logs/run_end_debug_{timestamp}.json"
+
+            # Recursively convert data object to dict and serialize
+            with open(filename, "w") as f:
+                json.dump(self._recursive_dict(data), f, indent=2)
+
+            logger.info(f"Run end debug data written to {filename}")
+        except Exception as e:
+            logger.error(f"Failed to write run end debug data: {e}")
+
         if self.weave_eval_logger is not None:
             if not self.weave_eval_logger._is_finalized:
                 if data.exception is not None:
@@ -65,12 +82,110 @@ class WeaveEvaluationHooks(Hooks):
                         summary[scorer_name][metric_name] = metric.value
         self.weave_eval_logger.log_summary(summary)
 
+    def _recursive_dict(self, obj, max_depth=10, current_depth=0):
+        """Recursively convert object to dict, handling nested objects."""
+        if current_depth > max_depth:
+            return str(obj)
+
+        if hasattr(obj, "__dict__"):
+            result = {}
+            for key, value in obj.__dict__.items():
+                result[key] = self._recursive_dict(value, max_depth, current_depth + 1)
+            return result
+        elif isinstance(obj, dict):
+            return {
+                k: self._recursive_dict(v, max_depth, current_depth + 1)
+                for k, v in obj.items()
+            }
+        elif isinstance(obj, (list, tuple)):
+            return [
+                self._recursive_dict(item, max_depth, current_depth + 1) for item in obj
+            ]
+        else:
+            return (
+                str(obj)
+                if not isinstance(obj, (str, int, float, bool, type(None)))
+                else obj
+            )
+
     async def on_sample_end(self, data: SampleEnd) -> None:
+        # Dump entire data object to JSON file for debugging (recursive)
+        try:
+            os.makedirs("inspect_weave/logs", exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            filename = f"/Users/matanshtepel/Documents/School Related/research/research-dev/inspect_evals/venv/lib/python3.13/site-packages/inspect_weave/logs/ssample_debug_{timestamp}.json"
+
+            # Recursively convert data object to dict and serialize
+            with open(filename, "w") as f:
+                json.dump(self._recursive_dict(data), f, indent=2)
+
+            logger.info(f"Debug data written to {filename}")
+        except Exception as e:
+            logger.error(f"Failed to write debug data: {e}")
+
         assert self.weave_eval_logger is not None
         sample_score_logger = self.weave_eval_logger.log_prediction(
             inputs={"input": data.sample.input},
             output=data.sample.output.completion
         )
+
+        # Log various metrics to Weave
+        try:
+            # Total time
+            if (
+                hasattr(data.sample, "total_time")
+                and data.sample.total_time is not None
+            ):
+                sample_score_logger.log_score(
+                    scorer="total_time", score=data.sample.total_time
+                )
+
+            # Total tokens - model_usage is a dict of model_name -> usage_dict
+            if hasattr(data.sample, "model_usage") and data.sample.model_usage:
+                # Get the first (and usually only) model's token usage
+                for model_name, usage_dict in data.sample.model_usage.items():
+                    if (
+                        "total_tokens" in usage_dict
+                        and usage_dict["total_tokens"] is not None
+                    ):
+                        sample_score_logger.log_score(
+                            scorer="total_tokens", score=usage_dict["total_tokens"]
+                        )
+                        break  # Only log the first model's tokens
+
+            # Number of tools from metadata - metadata is a dict
+            if (
+                hasattr(data.sample, "metadata")
+                and data.sample.metadata
+                and "Annotator Metadata" in data.sample.metadata
+                and "Number of tools" in data.sample.metadata["Annotator Metadata"]
+            ):
+                sample_score_logger.log_score(
+                    scorer="num_tool_calls",
+                    score=int(
+                        data.sample.metadata["Annotator Metadata"]["Number of tools"]
+                    ),
+                )
+
+            # Which tools from metadata
+            if (
+                hasattr(data.sample, "metadata")
+                and data.sample.metadata
+                and "Annotator Metadata" in data.sample.metadata
+                and "Tools" in data.sample.metadata["Annotator Metadata"]
+            ):
+                with weave.attributes(
+                    {
+                        "Which tools": str(
+                            data.sample.metadata["Annotator Metadata"]["Tools"]
+                        )
+                    }
+                ):
+                    pass  # Just set the attribute
+
+        except Exception as e:
+            logger.error(f"Failed to log metrics to Weave: {e}")
+
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
                 score_metadata = (v.metadata or {}) | ({"explanation": v.explanation} if v.explanation is not None else {})
@@ -79,7 +194,7 @@ class WeaveEvaluationHooks(Hooks):
                         scorer=k,
                         score=format_score_types(v.value)
                     )
-            sample_score_logger.finish()
+        sample_score_logger.finish()
 
     def enabled(self) -> bool:
         # Will error if wandb project is not set
