@@ -1,3 +1,4 @@
+from typing import Any
 from weave.flow.eval_imperative import ScoreType
 from inspect_ai.scorer import Value
 from typing import Sequence, Mapping
@@ -5,7 +6,7 @@ from wandb.old.core import wandb_dir
 from pathlib import Path
 import configparser
 from logging import Logger, getLogger
-
+import yaml
 utils_logger = getLogger(__name__)
 
 def format_model_name(model_name: str) -> str:
@@ -39,3 +40,9 @@ def read_wandb_project_name_from_settings(logger: Logger | None = None) -> str |
             logger.warning("Weave evaluation hooks are currently disabled. Please run `wandb init` to enable.")
         return None
     return f"{settings['default']['entity']}/{settings['default']['project']}"
+
+def parse_inspect_weave_settings() -> dict[str, Any]:
+    settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
+    with open(settings_path, "r") as f:
+        settings = yaml.safe_load(f)
+    return settings

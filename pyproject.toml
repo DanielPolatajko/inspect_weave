@@ -18,7 +18,8 @@ dependencies = [
   "weave",
   "httpx[socks]",
   "inspect_viz @ git+https://github.com/meridianlabs-ai/inspect_viz",
-  "playwright"
+  "playwright",
+  "pyyaml"
 ]
 
 [project.optional-dependencies]

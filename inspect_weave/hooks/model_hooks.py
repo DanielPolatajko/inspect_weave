@@ -14,7 +14,7 @@ from inspect_viz.plot import write_png_async
 from inspect_viz.view.beta import scores_heatmap
 from inspect_viz import Data
 from inspect_ai.analysis.beta import evals_df
-
+from inspect_weave.utils import parse_inspect_weave_settings
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,11 @@ class WandBModelHooks(Hooks):
     def __init__(self) -> None:
         self._correct_samples: int = 0
         self._total_samples: int = 0
+        self.settings = parse_inspect_weave_settings()
 
     @override
     def enabled(self) -> bool:
-        return True # TODO: add a way to enable/disable the hooks
+        return not self.settings["models"]["disabled"]
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
