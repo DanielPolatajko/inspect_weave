@@ -74,7 +74,6 @@ class TestWeaveEvaluationHooks:
         mock_score_logger.log_score.assert_called_once_with(
             scorer="test_score",
             score=1.0,
-            metadata={}
         )
         mock_score_logger.finish.assert_called_once()
 
@@ -111,8 +110,7 @@ class TestWeaveEvaluationHooks:
         )
         mock_score_logger.log_score.assert_called_once_with(
             scorer="test_score",
-            score=1.0,
-            metadata={"test": "test"}
+            score=1.0
         )
         mock_score_logger.finish.assert_called_once()
 
