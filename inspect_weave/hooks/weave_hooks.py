@@ -1,23 +1,27 @@
-from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, hooks, TaskStart, TaskEnd
+from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
-from inspect_weave.utils import format_model_name, format_score_types, read_wandb_project_name_from_settings
+from inspect_weave.utils import format_model_name, format_score_types, parse_inspect_weave_settings, read_wandb_entity_and_project_name_from_settings
 from logging import getLogger
-from inspect_weave.custom_evaluation_logger import CustomEvaluationLogger
+from inspect_weave.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
 from weave.trace.context import call_context
+from typing_extensions import override
+from typing import Any
 
-logger = getLogger("WeaveEvaluationHooks")
+logger = getLogger(__name__)
 
-@hooks(name="weave_evaluation_hooks", description="Integration hooks for writing evaluation results to Weave")
 class WeaveEvaluationHooks(Hooks):
     """
     Provides Inspect hooks for writing eval scores to the Weave Evaluations API.
     """
 
     weave_eval_logger: CustomEvaluationLogger | None = None
+    settings: dict[str, Any] | None = None
+
+    @override
     async def on_run_start(self, data: RunStart) -> None:
-        project_name = read_wandb_project_name_from_settings(logger=logger)
+        _, project_name = read_wandb_entity_and_project_name_from_settings(logger=logger)
         if project_name is None:
             return
         weave.init(
@@ -27,6 +31,7 @@ class WeaveEvaluationHooks(Hooks):
             )
         )
 
+    @override
     async def on_run_end(self, data: RunEnd) -> None:
         if self.weave_eval_logger is not None:
             if not self.weave_eval_logger._is_finalized:
@@ -43,6 +48,7 @@ class WeaveEvaluationHooks(Hooks):
                     self.weave_eval_logger.finish()
         weave.finish()
 
+    @override
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
         self.weave_eval_logger = CustomEvaluationLogger(
@@ -51,8 +57,10 @@ class WeaveEvaluationHooks(Hooks):
             model=model_name,
             eval_attributes=self._get_eval_metadata(data)
         )
+        assert self.weave_eval_logger._evaluate_call is not None
         call_context.set_call_stack([self.weave_eval_logger._evaluate_call]).__enter__()
 
+    @override
     async def on_task_end(self, data: TaskEnd) -> None:
         assert self.weave_eval_logger is not None
         summary: dict[str, dict[str, int | float]] = {}
@@ -65,6 +73,7 @@ class WeaveEvaluationHooks(Hooks):
                         summary[scorer_name][metric_name] = metric.value
         self.weave_eval_logger.log_summary(summary)
 
+    @override
     async def on_sample_end(self, data: SampleEnd) -> None:
         assert self.weave_eval_logger is not None
         sample_score_logger = self.weave_eval_logger.log_prediction(
@@ -81,9 +90,11 @@ class WeaveEvaluationHooks(Hooks):
                     )
             sample_score_logger.finish()
 
+    @override
     def enabled(self) -> bool:
+        self.settings = self.settings or parse_inspect_weave_settings()
         # Will error if wandb project is not set
-        if read_wandb_project_name_from_settings(logger=logger) is None:
+        if (read_wandb_entity_and_project_name_from_settings(logger=logger) is None) or (not self.settings["weave"]["enabled"]):
             return False
         return True
 

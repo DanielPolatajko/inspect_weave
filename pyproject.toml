@@ -14,9 +14,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-  "inspect_ai @ git+https://github.com/UKGovernmentBEIS/inspect_ai.git",
+  "inspect_ai",
   "weave",
-  "httpx[socks]"
+  "httpx[socks]",
+  "inspect_viz @ git+https://github.com/meridianlabs-ai/inspect_viz",
+  "playwright",
+  "pyyaml"
 ]
 
 [project.optional-dependencies]
