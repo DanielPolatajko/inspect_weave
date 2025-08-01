@@ -39,8 +39,6 @@ def read_wandb_entity_and_project_name_from_settings(logger: Logger | None = Non
 
 def parse_inspect_weave_settings() -> dict[str, Any]:
     settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
-    with open(settings_path, "r") as f:
-        print(f.read())
     if not settings_path.exists():
         entity, project_name = read_wandb_entity_and_project_name_from_settings()
         utils_logger.warning(f"Inspect Weave settings file not found, please add a `inspect-weave-settings.yaml` file to the wandb directory if you want to configure the inspect_weave hooks. Proceeding with default settings. Entity: {entity}, Project: {project_name}")

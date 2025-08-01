@@ -80,6 +80,7 @@ def patch_wandb_client(inspect_weave_settings: None):
 
 @pytest.fixture(scope="function")
 def reset_inspect_ai_hooks():
+    print("realoading hooks")
     hooks_startup_module._registry_hooks_loaded = False
 
 @pytest.fixture(scope="function")
@@ -107,8 +108,12 @@ def patched_weave_evaluation_hooks(inspect_weave_settings: None, reset_inspect_a
             }
 
     # reload settings for every test
-    hooks = registry_find(lambda x: x.name == "weave_evaluation_hooks")
-    hooks[0].settings = None # type: ignore
+    hooks = registry_find(lambda x: x.type == "hooks")
+    print(hooks)
+    if hooks:
+        for hook in hooks:
+            print(hook.settings)
+            hook.settings = None # type: ignore
 
 @pytest.fixture(scope="function")
 def hello_world_eval(inspect_weave_settings: None) -> Callable[[], Task]:

@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+from typing import Any
 from typing_extensions import override
 
 import pandas as pd
@@ -26,10 +27,11 @@ class WandBModelHooks(Hooks):
     def __init__(self) -> None:
         self._correct_samples: int = 0
         self._total_samples: int = 0
-        self.settings = parse_inspect_weave_settings()
+        self.settings: dict[str, Any] | None = None
 
     @override
     def enabled(self) -> bool:
+        self.settings = self.settings or parse_inspect_weave_settings()
         return self.settings["models"]["enabled"]
 
     @override
@@ -39,7 +41,7 @@ class WandBModelHooks(Hooks):
         run = wandb.init(id=data.run_id, entity=entity, project=project_name) 
 
         wandb.save(config_path, base_path=config_path.parent, policy="now")
-        
+        assert self.settings is not None
         if self.settings["models"].get("config"):
             wandb.config.update(self.settings["models"]["config"])
 
