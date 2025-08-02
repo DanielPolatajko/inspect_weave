@@ -127,23 +127,6 @@ class WeaveEvaluationHooks(Hooks):
                     ),
                 )
 
-            # Which tools from metadata
-            # ? I think this one is not displaying, afaik
-            if (
-                hasattr(data.sample, "metadata")
-                and data.sample.metadata
-                and "Annotator Metadata" in data.sample.metadata
-                and "Tools" in data.sample.metadata["Annotator Metadata"]
-            ):
-                with weave.attributes(
-                    {
-                        "Which tools": str(
-                            data.sample.metadata["Annotator Metadata"]["Tools"]
-                        )
-                    }
-                ):
-                    pass  # Just set the attribute
-
         except Exception as e:
             logger.error(f"Failed to log metrics to Weave: {e}")
 
