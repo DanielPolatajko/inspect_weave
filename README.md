@@ -3,6 +3,8 @@ Integration with [Inspect](https://inspect.aisi.org.uk/) and [W&amp;B Weave](htt
 
 The integration is implemented as an Inspect [hook](https://inspect.aisi.org.uk/extensions.html#hooks).
 
+Check out our new walkthrough video! 
+<div style="position: relative; padding-bottom: 62.5%; height: 0;"><iframe src="https://www.loom.com/embed/1578ad78581146d08348cfe2a13270b0?sid=311673bf-0d61-496a-9d15-3d537523fe84" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
 ## Usage
 
 ### Installation
