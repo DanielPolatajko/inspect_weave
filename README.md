@@ -3,6 +3,15 @@ Integration with [Inspect](https://inspect.aisi.org.uk/) and [W&amp;B Weave](htt
 
 The integration is implemented as an Inspect [hook](https://inspect.aisi.org.uk/extensions.html#hooks).
 
+<div>
+    <a href="https://www.loom.com/share/1578ad78581146d08348cfe2a13270b0">
+      <p>Integrating Inspect Weave with Inspect AI for LLM Evaluations 🚀 - Watch Video</p>
+    </a>
+    <a href="https://www.loom.com/share/1578ad78581146d08348cfe2a13270b0">
+      <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/1578ad78581146d08348cfe2a13270b0-d6183465b48a6d2b-full-play.gif">
+    </a>
+  </div>
+
 ## Usage
 
 ### Installation
