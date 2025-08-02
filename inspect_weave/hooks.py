@@ -82,47 +82,7 @@ class WeaveEvaluationHooks(Hooks):
                         summary[scorer_name][metric_name] = metric.value
         self.weave_eval_logger.log_summary(summary)
 
-    def _recursive_dict(self, obj, max_depth=10, current_depth=0):
-        """Recursively convert object to dict, handling nested objects."""
-        if current_depth > max_depth:
-            return str(obj)
-
-        if hasattr(obj, "__dict__"):
-            result = {}
-            for key, value in obj.__dict__.items():
-                result[key] = self._recursive_dict(value, max_depth, current_depth + 1)
-            return result
-        elif isinstance(obj, dict):
-            return {
-                k: self._recursive_dict(v, max_depth, current_depth + 1)
-                for k, v in obj.items()
-            }
-        elif isinstance(obj, (list, tuple)):
-            return [
-                self._recursive_dict(item, max_depth, current_depth + 1) for item in obj
-            ]
-        else:
-            return (
-                str(obj)
-                if not isinstance(obj, (str, int, float, bool, type(None)))
-                else obj
-            )
-
     async def on_sample_end(self, data: SampleEnd) -> None:
-        # Dump entire data object to JSON file for debugging (recursive)
-        try:
-            os.makedirs("inspect_weave/logs", exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            filename = f"/Users/matanshtepel/Documents/School Related/research/research-dev/inspect_evals/venv/lib/python3.13/site-packages/inspect_weave/logs/ssample_debug_{timestamp}.json"
-
-            # Recursively convert data object to dict and serialize
-            with open(filename, "w") as f:
-                json.dump(self._recursive_dict(data), f, indent=2)
-
-            logger.info(f"Debug data written to {filename}")
-        except Exception as e:
-            logger.error(f"Failed to write debug data: {e}")
-
         assert self.weave_eval_logger is not None
         sample_score_logger = self.weave_eval_logger.log_prediction(
             inputs={"input": data.sample.input},
@@ -168,6 +128,7 @@ class WeaveEvaluationHooks(Hooks):
                 )
 
             # Which tools from metadata
+            # ? I think this one is not displaying, afaik
             if (
                 hasattr(data.sample, "metadata")
                 and data.sample.metadata
