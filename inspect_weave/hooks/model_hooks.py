@@ -6,7 +6,7 @@ from typing_extensions import override
 
 import pandas as pd
 import wandb
-from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd
+from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart
 from inspect_ai.log import EvalSample
 from inspect_ai.scorer import CORRECT
 from inspect_viz import Component
@@ -38,14 +38,14 @@ class WandBModelHooks(Hooks):
     async def on_run_start(self, data: RunStart) -> None:
         config_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
         entity, project_name = read_wandb_entity_and_project_name_from_settings(logger=logger)
-        run = wandb.init(id=data.run_id, entity=entity, project=project_name) 
+        self.run = wandb.init(id=data.run_id, entity=entity, project=project_name) 
 
         wandb.save(config_path, base_path=config_path.parent, policy="now")
         assert self.settings is not None
         if self.settings["models"].get("config"):
             wandb.config.update(self.settings["models"]["config"])
 
-        _ = run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
+        _ = self.run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
@@ -58,6 +58,18 @@ class WandBModelHooks(Hooks):
             logger.warning(f"Error in wandb_hooks: {e}")
 
         wandb.finish()
+
+    @override
+    async def on_task_start(self, data: TaskStart) -> None:
+        inspect_tags = (
+            f"inspect_task:{data.spec.task}",
+            f"inspect_model:{data.spec.model}",
+            f"inspect_dataset:{data.spec.dataset.name}",
+        )
+        if self.run.tags:
+            self.run.tags = self.run.tags + inspect_tags
+        else:
+            self.run.tags = inspect_tags
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
@@ -89,7 +101,7 @@ class WandBModelHooks(Hooks):
             "logs": [log.location for log in data.logs],
         }
         wandb.summary.update(summary)
-        logger.warning(f"WandB Summary: {summary}")
+        logger.info(f"WandB Summary: {summary}")
 
     def _is_correct(self, sample: EvalSample) -> bool:
         if not sample.scores:
