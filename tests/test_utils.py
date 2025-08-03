@@ -1,11 +1,6 @@
-from inspect_weave.utils import format_model_name, format_score_types
+from inspect_weave.hooks.utils import format_model_name, format_score_types
 import pytest
 import re
-from pathlib import Path
-from inspect_weave.utils import read_wandb_entity_and_project_name_from_settings
-import os
-from inspect_weave.exceptions import WandBNotInitialisedException
-
 @pytest.mark.parametrize("model_name", [
     "google/vertex/gemini-2.0-flash",
     "anthropic/vertex/claude-3-5-sonnet-v2@20241022",
@@ -86,18 +81,3 @@ class TestFormatScoreTypes:
         }
         result = format_score_types(input_dict)
         assert result == input_dict
-
-def test_read_wandb_project_name_from_settings() -> None:
-    # When
-    project_name = read_wandb_entity_and_project_name_from_settings()
-
-    # Then
-    assert project_name == ("test-entity", "test-project")
-
-def test_read_wandb_project_name_from_settings_raises_error_if_settings_file_not_found(tmp_path: Path) -> None:
-    # Given
-    os.chdir(tmp_path)
-
-    # When
-    with pytest.raises(WandBNotInitialisedException, match="wandb settings file not found. Please run `wandb init` to set up a project."):
-        read_wandb_entity_and_project_name_from_settings()

@@ -49,7 +49,9 @@ wandb init
 
 ### Configuration
 
-`inspect_weave` allows you to specify finer-grained configuration by creating an `inspect-weave-settings.yaml` file and placing it in the `wandb` directory (where the settings file is after running `wandb init`). As of now, the only possible configuration is enabling/disabling the Models or Weave features of the integration - an example file can be found [here](./wandb/inspect-weave-settings.yaml)
+`inspect_weave` allows you to specify finer-grained configuration by creating an `inspect-weave-settings.yaml` file and placing it in the `wandb` directory (where the settings file is after running `wandb init`). An example file can be found [here](./wandb/inspect-weave-settings.yaml). Available settings include enabling/disabling Weave or Models integrations, specifying the project and entity to write to for both Models and Weave, passing wandb config to the Models API, and specifying files to associated with the Models run.
+
+As mentioned above, by default, the integration will use whichever W&B project and entity you specified when running wandb init, unless overridden in the `inspect-weave-settings.yaml`.
 
 ### Running Inspect with the integration
 
