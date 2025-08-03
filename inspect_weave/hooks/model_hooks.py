@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from wandb.old.core import wandb_dir
 from typing_extensions import override
 
 import pandas as pd
@@ -15,7 +15,8 @@ from inspect_viz.plot import write_png_async
 from inspect_viz.view.beta import scores_heatmap
 from inspect_viz import Data
 from inspect_ai.analysis.beta import evals_df
-from inspect_weave.utils import parse_inspect_weave_settings, read_wandb_entity_and_project_name_from_settings, wandb_dir
+from inspect_weave.config.settings_loader import SettingsLoader
+from inspect_weave.config.settings import ModelsSettings
 
 logger = logging.getLogger(__name__)
 
@@ -24,26 +25,29 @@ class Metric:
     SAMPLES: str = "samples"
 
 class WandBModelHooks(Hooks):
-    def __init__(self) -> None:
-        self._correct_samples: int = 0
-        self._total_samples: int = 0
-        self.settings: dict[str, Any] | None = None
+
+    settings: ModelsSettings | None = None
+
+    _correct_samples: int = 0
+    _total_samples: int = 0
 
     @override
     def enabled(self) -> bool:
-        self.settings = self.settings or parse_inspect_weave_settings()
-        return self.settings["models"]["enabled"]
+        settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
+        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings(settings_path).models
+        return self.settings.enabled
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        config_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
-        entity, project_name = read_wandb_entity_and_project_name_from_settings(logger=logger)
-        self.run = wandb.init(id=data.run_id, entity=entity, project=project_name) 
-
-        wandb.save(config_path, base_path=config_path.parent, policy="now")
         assert self.settings is not None
-        if self.settings["models"].get("config"):
-            wandb.config.update(self.settings["models"]["config"])
+        self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
+
+        if self.settings.files:
+            for file in self.settings.files:
+                wandb.save(file, base_path=Path(wandb_dir()), policy="now")
+
+        if self.settings.config:
+            wandb.config.update(self.settings.config)
 
         _ = self.run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
 
