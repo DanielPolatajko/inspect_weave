@@ -45,7 +45,7 @@ class CustomEvaluationLogger(EvaluationLogger):
     """
 
     eval_attributes: Annotated[
-        dict[str, str],
+        dict[str, str | dict[str, Any]],
         Field(
             default_factory=dict,
             description="(Optional): A dictionary of attributes to add to the evaluation.",
