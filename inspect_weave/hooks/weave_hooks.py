@@ -1,13 +1,16 @@
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
-from inspect_weave.utils import format_model_name, format_score_types, parse_inspect_weave_settings, read_wandb_entity_and_project_name_from_settings
+from inspect_weave.hooks.utils import format_model_name, format_score_types
+from inspect_weave.config.settings_loader import SettingsLoader
+from inspect_weave.config.settings import WeaveSettings
 from logging import getLogger
 from inspect_weave.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
 from weave.trace.context import call_context
 from typing_extensions import override
-from typing import Any
+from wandb.old.core import wandb_dir
+from pathlib import Path
 
 logger = getLogger(__name__)
 
@@ -17,15 +20,13 @@ class WeaveEvaluationHooks(Hooks):
     """
 
     weave_eval_logger: CustomEvaluationLogger | None = None
-    settings: dict[str, Any] | None = None
+    settings: WeaveSettings | None = None
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        _, project_name = read_wandb_entity_and_project_name_from_settings(logger=logger)
-        if project_name is None:
-            return
+        assert self.settings is not None
         weave.init(
-            project_name=project_name,
+            project_name=self.settings.project,
             settings=UserSettings(
                 print_call_link=False
             )
@@ -92,11 +93,9 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     def enabled(self) -> bool:
-        self.settings = self.settings or parse_inspect_weave_settings()
-        # Will error if wandb project is not set
-        if (read_wandb_entity_and_project_name_from_settings(logger=logger) is None) or (not self.settings["weave"]["enabled"]):
-            return False
-        return True
+        settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
+        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings(settings_path).weave
+        return self.settings.enabled
 
     def _get_eval_metadata(self, data: TaskStart) -> dict[str, str]:
         eval_metadata = data.spec.metadata or {}
