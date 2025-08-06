@@ -50,18 +50,7 @@ def write_inspect_weave_settings(wandb_path: Path, settings: dict[str, Any]) -> 
 
 @pytest.fixture(scope="function", autouse=True)
 def inspect_weave_settings(request: pytest.FixtureRequest, wandb_path: Path) -> None:
-    settings = {
-        "weave": {
-            "enabled": True,
-            "project": "test-project",
-            "entity": "test-entity"
-        },
-        "models": {
-            "enabled": True,
-            "project": "test-project",
-            "entity": "test-entity"
-        }
-    }
+    settings = {"weave": {"enabled": True}, "models": {"enabled": True}}
     if "weave_hooks_disabled" in request.keywords:
         settings["weave"]["enabled"] = False
     if "models_hooks_disabled" in request.keywords:
@@ -91,6 +80,7 @@ def patch_wandb_client(inspect_weave_settings: None):
 
 @pytest.fixture(scope="function")
 def reset_inspect_ai_hooks():
+    print("realoading hooks")
     hooks_startup_module._registry_hooks_loaded = False
 
 @pytest.fixture(scope="function")
