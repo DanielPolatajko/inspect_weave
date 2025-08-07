@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff", "mypy", "pre-commit"]
+dev = ["pytest", "pytest-asyncio", "ruff", "mypy", "pre-commit"]
 
 [project.urls]
 Homepage = "https://github.com/DanielPolatajko/inspect_weave"

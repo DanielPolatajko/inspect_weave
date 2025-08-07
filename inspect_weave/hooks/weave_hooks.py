@@ -1,3 +1,4 @@
+from typing import Any
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
@@ -97,9 +98,29 @@ class WeaveEvaluationHooks(Hooks):
         self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings(settings_path).weave
         return self.settings.enabled
 
-    def _get_eval_metadata(self, data: TaskStart) -> dict[str, str]:
+    def _get_eval_metadata(self, data: TaskStart) -> dict[str, str | dict[str, Any]]:
+
         eval_metadata = data.spec.metadata or {}
-        eval_metadata["inspect_run_id"] = data.run_id
-        eval_metadata["inspect_task_id"] = data.spec.task_id
-        eval_metadata["inspect_eval_id"] = data.eval_id
+        
+        inspect_data = {
+            "run_id": data.run_id,
+            "task_id": data.spec.task_id,
+            "eval_id": data.eval_id,
+            "sample_count": data.spec.config.limit if data.spec.config.limit is not None else data.spec.dataset.samples
+        }
+        
+        # Add task_args key-value pairs
+        if data.spec.task_args:
+            for key, value in data.spec.task_args.items():
+                inspect_data[key] = value
+        
+        # Add config key-value pairs if config is not None
+        if data.spec.config is not None:
+            config_dict = data.spec.config.__dict__
+            for key, value in config_dict.items():
+                if value is not None:
+                    inspect_data[key] = value
+        
+        eval_metadata["inspect"] = inspect_data
+        
         return eval_metadata
