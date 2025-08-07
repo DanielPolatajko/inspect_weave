@@ -1,6 +1,17 @@
 # `inspect_weave`
 Integration with [Inspect](https://inspect.aisi.org.uk/) and Weights & Biases. Initially, this integration was focused primarily on [Weave](https://weave-docs.wandb.ai/), but we are also expanding to include the [wandb Models API](https://docs.wandb.ai/guides/models/)
 
+## Demo Video
+
+<div>
+    <a href="https://www.loom.com/share/1578ad78581146d08348cfe2a13270b0">
+      <p>WIP: Integrating Inspect Weave with Inspect AI for LLM Evaluations 🚀 - Watch Video</p>
+    </a>
+    <a href="https://www.loom.com/share/1578ad78581146d08348cfe2a13270b0">
+      <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/1578ad78581146d08348cfe2a13270b0-d6183465b48a6d2b-full-play.gif">
+    </a>
+  </div>
+
 The integration is implemented as an Inspect [hook](https://inspect.aisi.org.uk/extensions.html#hooks).
 
 ## Usage
