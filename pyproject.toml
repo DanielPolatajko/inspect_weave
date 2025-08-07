@@ -34,10 +34,9 @@ Issues = "https://github.com/DanielPolatajko/inspect_weave/issues"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = [
-    "inspect_weave"
-]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["inspect_weave*"]
 
 [project.entry-points.inspect_ai]
 inspect_weave = "inspect_weave._registry"
