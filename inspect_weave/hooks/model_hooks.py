@@ -43,8 +43,10 @@ class WandBModelHooks(Hooks):
         self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 
         if self.settings.files:
+            wandb_base_path = Path(wandb_dir())
             for file in self.settings.files:
-                wandb.save(file, base_path=Path(wandb_dir()), policy="now")
+                file_path = wandb_base_path / file
+                wandb.save(str(file_path), base_path=str(wandb_base_path), policy="now")
 
         if self.settings.config:
             wandb.config.update(self.settings.config)
