@@ -38,7 +38,10 @@ class WandBModelHooks(Hooks):
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        assert self.settings is not None
+        # Ensure settings are loaded (in case enabled() wasn't called first)
+        if self.settings is None:
+            self.settings = SettingsLoader.parse_inspect_weave_settings().models
+            
         self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 
         if self.settings.files:
