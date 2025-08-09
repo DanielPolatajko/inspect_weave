@@ -60,9 +60,20 @@ wandb init
 
 ### Configuration
 
-`inspect_weave` allows you to specify finer-grained configuration by creating an `inspect-weave-settings.yaml` file and placing it in the `wandb` directory (where the settings file is after running `wandb init`). An example file can be found [here](./wandb/inspect-weave-settings.yaml). Available settings include enabling/disabling Weave or Models integrations, specifying the project and entity to write to for both Models and Weave, passing wandb config to the Models API, and specifying files to associated with the Models run.
+`inspect_weave` works out-of-the-box after running `wandb init` - no additional configuration is required! By default, both Weave and Models integrations are enabled, using the project and entity from your wandb settings.
 
-As mentioned above, by default, the integration will use whichever W&B project and entity you specified when running wandb init, unless overridden in the `inspect-weave-settings.yaml`.
+#### Optional Customization
+
+For advanced users who want to customize the behavior, you can add a `[tool.inspect-weave]` section to your project's `pyproject.toml` file:
+
+```toml
+[tool.inspect-weave.weave]
+enabled = true  # Enable/disable Weave integration (default: true)
+
+[tool.inspect-weave.models]
+enabled = false  # Enable/disable Models integration (default: true)
+files = ["config.yaml", "results/"]  # Files to upload with Models run (default: none)
+```
 
 ### Running Inspect with the integration
 
@@ -70,17 +81,17 @@ Once you have performed the above steps, the integration will be enabled for fut
 
 ### Disabling the integration
 
-You can disable the Weave integration by updating the `inspect-weave-settings.yaml` and specifiying `enabled: false` for the relevant API. For example:
+You can disable either integration by adding configuration to your `pyproject.toml`. For example:
 
-```yaml
-models:
-    enabled: true
+```toml
+[tool.inspect-weave.weave]
+enabled = false  # Disable Weave integration
 
-weave:
-    enabled: false
+[tool.inspect-weave.models]  
+enabled = true   # Keep Models integration enabled
 ```
 
-would write data to the models API, but disable the Weave integration.
+This would disable the Weave integration while keeping the Models API integration enabled.
 
 
 ## Development

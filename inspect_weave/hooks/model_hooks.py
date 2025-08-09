@@ -33,13 +33,15 @@ class WandBModelHooks(Hooks):
 
     @override
     def enabled(self) -> bool:
-        settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
-        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings(settings_path).models
+        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings().models
         return self.settings.enabled
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        assert self.settings is not None
+        # Ensure settings are loaded (in case enabled() wasn't called first)
+        if self.settings is None:
+            self.settings = SettingsLoader.parse_inspect_weave_settings().models
+            
         self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 
         if self.settings.files:
