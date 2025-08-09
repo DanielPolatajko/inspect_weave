@@ -57,6 +57,7 @@ class WandBModelHooks(Hooks):
     async def on_run_end(self, data: RunEnd) -> None:
         try:
             logs = [log.location for log in data.logs]
+            self.run.config["logs"] = logs
             df = evals_df(logs)
             await self._log_scores_heatmap(data, df)
             self._log_summary(data)
