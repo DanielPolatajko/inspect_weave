@@ -33,8 +33,7 @@ class WandBModelHooks(Hooks):
 
     @override
     def enabled(self) -> bool:
-        settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
-        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings(settings_path).models
+        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings().models
         return self.settings.enabled
 
     @override

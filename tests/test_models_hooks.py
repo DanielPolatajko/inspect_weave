@@ -1,5 +1,6 @@
 from inspect_weave.hooks.model_hooks import WandBModelHooks
-import pytest
+from inspect_weave.config.settings import ModelsSettings
+from unittest.mock import patch
 
 class TestWandBModelHooks:
     """
@@ -13,12 +14,20 @@ class TestWandBModelHooks:
         hooks = WandBModelHooks()
         assert hooks.enabled()
 
-    @pytest.mark.models_hooks_disabled
     def test_enabled_returns_false_when_settings_are_set_to_false(self) -> None:
         """
         Test that the enabled method returns False when the settings are set to False.
         """
-        hooks = WandBModelHooks()
-        assert not hooks.enabled()
+        # Mock the settings loader to return disabled models settings
+        disabled_settings = ModelsSettings(
+            enabled=False, 
+            entity="test-entity", 
+            project="test-project"
+        )
+        
+        with patch('inspect_weave.hooks.model_hooks.SettingsLoader.parse_inspect_weave_settings') as mock_loader:
+            mock_loader.return_value.models = disabled_settings
+            hooks = WandBModelHooks()
+            assert not hooks.enabled()
 
     
