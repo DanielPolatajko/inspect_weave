@@ -103,6 +103,47 @@ class WeaveEvaluationHooks(Hooks):
                         scorer=k,
                         score=format_score_types(v.value)
                     )
+
+                    # Log various metrics to Weave
+        try:
+            # Total time
+            if (
+                hasattr(data.sample, "total_time")
+                and data.sample.total_time is not None
+            ):
+                sample_score_logger.log_score(
+                    scorer="total_time", score=data.sample.total_time
+                )
+
+            # Total tokens - model_usage is a dict of model_name -> usage_dict
+            if hasattr(data.sample, "model_usage") and data.sample.model_usage:
+                # Get the first (and usually only) model's token usage
+                for model_name, usage_dict in data.sample.model_usage.items():
+                    if (
+                        "total_tokens" in usage_dict
+                        and usage_dict["total_tokens"] is not None
+                    ):
+                        sample_score_logger.log_score(
+                            scorer="total_tokens", score=usage_dict["total_tokens"]
+                        )
+                        break  # Only log the first model's tokens
+
+            # Number of tools from metadata - metadata is a dict
+            if (
+                hasattr(data.sample, "metadata")
+                and data.sample.metadata
+                and "Annotator Metadata" in data.sample.metadata
+                and "Number of tools" in data.sample.metadata["Annotator Metadata"]
+            ):
+                sample_score_logger.log_score(
+                    scorer="num_tool_calls",
+                    score=int(
+                        data.sample.metadata["Annotator Metadata"]["Number of tools"]
+                    ),
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to log metrics to Weave: {e}")
             sample_score_logger.finish()
 
     @override
