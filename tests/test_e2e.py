@@ -1,18 +1,24 @@
 from typing import Callable
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from inspect_ai import Task, eval as inspect_eval
-import pytest
+from inspect_weave.config.settings import WeaveSettings, ModelsSettings, InspectWeaveSettings
 
 class TestEndToEndInspectRuns:
     """
     A test class for tests which simulate an entire Inspect eval run
     """
-    @pytest.mark.weave_hooks_disabled   
     def test_weave_init_not_called_on_run_start_when_disabled(self, patched_weave_evaluation_hooks: dict[str, MagicMock], hello_world_eval: Callable[[], Task]) -> None:
-        # Given
+        # Given - Mock settings loader to return disabled weave settings
+        disabled_settings = InspectWeaveSettings(
+            weave=WeaveSettings(enabled=False, entity="test-entity", project="test-project"),
+            models=ModelsSettings(enabled=True, entity="test-entity", project="test-project")
+        )
+        
         weave_init = patched_weave_evaluation_hooks["weave_init"]
+        
         # When
-        inspect_eval(hello_world_eval, model="mockllm/model")
+        with patch('inspect_weave.hooks.weave_hooks.SettingsLoader.parse_inspect_weave_settings', return_value=disabled_settings):
+            inspect_eval(hello_world_eval, model="mockllm/model")
 
         # Then
         assert isinstance(weave_init, MagicMock)

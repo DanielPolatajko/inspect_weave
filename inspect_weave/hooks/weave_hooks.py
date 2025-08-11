@@ -10,8 +10,6 @@ from inspect_weave.weave_custom_overrides.custom_evaluation_logger import Custom
 from inspect_weave.exceptions import WeaveEvaluationException
 from weave.trace.context import call_context
 from typing_extensions import override
-from wandb.old.core import wandb_dir
-from pathlib import Path
 
 logger = getLogger(__name__)
 
@@ -25,7 +23,10 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        assert self.settings is not None
+        # Ensure settings are loaded (in case enabled() wasn't called first)
+        if self.settings is None:
+            self.settings = SettingsLoader.parse_inspect_weave_settings().weave
+        
         weave.init(
             project_name=self.settings.project,
             settings=UserSettings(
@@ -94,8 +95,7 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     def enabled(self) -> bool:
-        settings_path = Path(wandb_dir()) / "inspect-weave-settings.yaml"
-        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings(settings_path).weave
+        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings().weave
         return self.settings.enabled
 
     def _get_eval_metadata(self, data: TaskStart) -> dict[str, str | dict[str, Any]]:
