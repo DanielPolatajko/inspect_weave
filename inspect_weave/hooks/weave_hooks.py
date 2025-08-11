@@ -18,7 +18,7 @@ class WeaveEvaluationHooks(Hooks):
     Provides Inspect hooks for writing eval scores to the Weave Evaluations API.
     """
 
-    weave_eval_logger: CustomEvaluationLogger | None = None
+    weave_eval_loggers: dict[str, CustomEvaluationLogger] = {}
     settings: WeaveSettings | None = None
 
     @override
@@ -36,36 +36,46 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
-        if self.weave_eval_logger is not None:
-            if not self.weave_eval_logger._is_finalized:
+        # Finalize all active loggers
+        for task_id, weave_eval_logger in self.weave_eval_loggers.items():
+            if not weave_eval_logger._is_finalized:
                 if data.exception is not None:
-                    self.weave_eval_logger.finish(exception=data.exception)
+                    weave_eval_logger.finish(exception=data.exception)
                 elif errors := [eval.error for eval in data.logs]:
-                    self.weave_eval_logger.finish(
+                    weave_eval_logger.finish(
                         exception=WeaveEvaluationException(
                             message="Inspect run failed", 
                             error="\n".join([error.message for error in errors if error is not None])
                         )
                     )
                 else:
-                    self.weave_eval_logger.finish()
+                    weave_eval_logger.finish()
+        
+        # Clear the loggers dict
+        self.weave_eval_loggers.clear()
         weave.finish()
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
-        self.weave_eval_logger = CustomEvaluationLogger(
+        weave_eval_logger = CustomEvaluationLogger(
             name=data.spec.task,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
             model=model_name,
             eval_attributes=self._get_eval_metadata(data)
         )
-        assert self.weave_eval_logger._evaluate_call is not None
-        call_context.set_call_stack([self.weave_eval_logger._evaluate_call]).__enter__()
+        
+        # Store logger with task_id as key
+        self.weave_eval_loggers[data.eval_id] = weave_eval_logger
+        
+        assert weave_eval_logger._evaluate_call is not None
+        call_context.set_call_stack([weave_eval_logger._evaluate_call]).__enter__()
 
     @override
     async def on_task_end(self, data: TaskEnd) -> None:
-        assert self.weave_eval_logger is not None
+        weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
+        assert weave_eval_logger is not None
+        
         summary: dict[str, dict[str, int | float]] = {}
         if data.log and data.log.results:
             for score in data.log.results.scores:
@@ -74,12 +84,14 @@ class WeaveEvaluationHooks(Hooks):
                     summary[scorer_name] = {}
                     for metric_name, metric in score.metrics.items():
                         summary[scorer_name][metric_name] = metric.value
-        self.weave_eval_logger.log_summary(summary)
+        weave_eval_logger.log_summary(summary)
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
-        assert self.weave_eval_logger is not None
-        sample_score_logger = self.weave_eval_logger.log_prediction(
+        weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
+        assert weave_eval_logger is not None
+        
+        sample_score_logger = weave_eval_logger.log_prediction(
             inputs={"input": data.sample.input},
             output=data.sample.output.completion
         )
