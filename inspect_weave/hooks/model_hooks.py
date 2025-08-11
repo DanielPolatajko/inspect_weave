@@ -1,7 +1,5 @@
 import logging
 import os
-from pathlib import Path
-from wandb.old.core import wandb_dir
 from typing_extensions import override
 
 import pandas as pd
@@ -45,10 +43,10 @@ class WandBModelHooks(Hooks):
         self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 
         if self.settings.files:
-            wandb_base_path = Path(wandb_dir())
+            # TODO: will folder work?
             for file in self.settings.files:
-                file_path = wandb_base_path / file
-                wandb.save(str(file_path), base_path=str(wandb_base_path), policy="now")
+                wandb.save(str(file), policy="now")
+
 
         if self.settings.config:
             wandb.config.update(self.settings.config)

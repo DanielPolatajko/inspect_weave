@@ -72,7 +72,7 @@ enabled = true  # Enable/disable Weave integration (default: true)
 
 [tool.inspect-weave.models]
 enabled = false  # Enable/disable Models integration (default: true)
-files = ["config.yaml", "results/"]  # Files to upload with Models run (default: none)
+files = ["pyproject.toml"]  # Files to upload with Models run, path relative to your current working directory (default: none)
 ```
 
 ### Running Inspect with the integration
