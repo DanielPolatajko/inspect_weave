@@ -61,7 +61,7 @@ class TestWeaveEvaluationHooks:
         mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
         mock_score_logger = MagicMock(spec=weave.flow.eval_imperative.ScoreLogger)
         mock_weave_eval_logger.log_prediction.return_value = mock_score_logger
-        hooks.weave_eval_logger = mock_weave_eval_logger
+        hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
         # When
         await hooks.on_sample_end(sample)
@@ -98,7 +98,7 @@ class TestWeaveEvaluationHooks:
         mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
         mock_score_logger = MagicMock(spec=weave.flow.eval_imperative.ScoreLogger)
         mock_weave_eval_logger.log_prediction.return_value = mock_score_logger
-        hooks.weave_eval_logger = mock_weave_eval_logger
+        hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
         # When
         await hooks.on_sample_end(sample)
@@ -125,7 +125,7 @@ class TestWeaveEvaluationHooks:
         )
 
         mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
-        hooks.weave_eval_logger = mock_weave_eval_logger
+        hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
         # When
         await hooks.on_task_end(task_end)
@@ -154,7 +154,7 @@ class TestWeaveEvaluationHooks:
         mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
         mock_weave_eval_logger.finish = MagicMock()
         mock_weave_eval_logger._is_finalized = False
-        hooks.weave_eval_logger = mock_weave_eval_logger
+        hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
         # When
         await hooks.on_run_end(task_end)
