@@ -42,11 +42,6 @@ class WandBModelHooks(Hooks):
             
         self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 
-        if self.settings.files:
-            # TODO: will folder work?
-            for file in self.settings.files:
-                wandb.save(str(file), policy="now")
-
 
         if self.settings.config:
             wandb.config.update(self.settings.config)
@@ -55,6 +50,7 @@ class WandBModelHooks(Hooks):
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
+        
         try:
             logs = [log.location for log in data.logs]
             self.run.config["logs"] = logs
@@ -64,6 +60,9 @@ class WandBModelHooks(Hooks):
         except Exception as e:
             logger.warning(f"Error in wandb_hooks: {e}")
 
+        if self.settings is not None and self.settings.files:
+            for file in self.settings.files:
+                 wandb.save(str(file), policy="now")  # TODO: fix wandb Symlinked warning for folder upload
         wandb.finish()
 
     @override

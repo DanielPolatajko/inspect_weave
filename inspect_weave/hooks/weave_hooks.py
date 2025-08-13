@@ -115,16 +115,13 @@ class WeaveEvaluationHooks(Hooks):
                     scorer="total_time", score=data.sample.total_time
                 )
 
-            # Total tokens - model_usage is a dict of model_name -> usage_dict
+            # Total tokens - model_usage is a dict of model_name -> ModelUsage
             if hasattr(data.sample, "model_usage") and data.sample.model_usage:
                 # Get the first (and usually only) model's token usage
-                for model_name, usage_dict in data.sample.model_usage.items():
-                    if (
-                        "total_tokens" in usage_dict
-                        and usage_dict["total_tokens"] is not None
-                    ):
+                for model_name, usage in data.sample.model_usage.items():
+                    if usage.total_tokens is not None:
                         sample_score_logger.log_score(
-                            scorer="total_tokens", score=usage_dict["total_tokens"]
+                            scorer="total_tokens", score=usage.total_tokens
                         )
                         break  # Only log the first model's tokens
 
