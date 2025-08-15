@@ -70,6 +70,8 @@ If you are running Inspect in an automated environment where stepping through `w
 
 Environment variables take precedence over `wandb` settings set via the CLI, so if you want to override the settings, using env vars is a viable option.
 
+There are also a handful of `wandb` environment variables which are not directly parsed by the inspect_weave integration, but will influence the behaviour of `wandb` if passed at runtime. These can be found [here](https://docs.wandb.ai/guides/track/environment-variables/)
+
 ### Configuration
 
 `inspect_weave` works out-of-the-box after running `wandb init` - no additional configuration is required! By default, both Weave and Models integrations are enabled, using the project and entity from your wandb settings or set via env variables.
