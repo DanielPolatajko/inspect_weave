@@ -28,8 +28,12 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
-      - name: Run Linting and testing checks
+      - name: Ruff linting checks
         run: |
           uv run ruff check inspect_weave tests --fix
-          uv run mypy inspect_weave
-          uv run pytest . 
+
+      - name: MyPy typing checks
+        run: uv run mypy inspect_weave
+
+      - name: Unit tests
+        run: uv run pytest . 
