@@ -22,7 +22,7 @@ class ModelsSettings(BaseSettings):
     project: str = Field(alias="WANDB_PROJECT", description="Project to write to for the Models integration")
     entity: str = Field(alias="WANDB_ENTITY", description="Entity to write to for the Models integration")
     config: dict[str, Any] | None = Field(default=None, description="Configuration to pass directly to wandb.config for the Models integration")
-    files: list[str] | None = Field(default=None, description="Files to upload to the models run. Paths should be relative to the wandb directory where the inspect-weave-settings.yaml file is located.")
+    files: list[str] | None = Field(default=None, description="Files to upload to the models run. Paths should be relative to the wandb directory.")
 
     @classmethod
     def settings_customise_sources(

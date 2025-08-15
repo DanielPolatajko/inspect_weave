@@ -1,7 +1,7 @@
 import pytest
 import configparser
 import os
-from typing import Any, Callable
+from typing import Callable
 from pathlib import Path
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
@@ -12,7 +12,6 @@ from inspect_weave.weave_custom_overrides.custom_evaluation_logger import Custom
 import inspect_ai.hooks._startup as hooks_startup_module
 from unittest.mock import patch
 from inspect_weave.providers import weave_evaluation_hooks
-import yaml
 from pytest import TempPathFactory
 from inspect_ai._util.registry import registry_find
 
@@ -41,38 +40,11 @@ def initialise_wandb(wandb_path: Path) -> None:
     with open(wandb_path / "settings", "w") as f:
         config.write(f)
 
-def write_inspect_weave_settings(wandb_path: Path, settings: dict[str, Any]) -> None:
-    """
-    Writes a inspect-weave-settings.yaml file to the tmp_path directory.
-    """
-    with open(wandb_path / "inspect-weave-settings.yaml", "w") as f:
-        yaml.dump(settings, f)
-
-@pytest.fixture(scope="function", autouse=True)
-def inspect_weave_settings(request: pytest.FixtureRequest, wandb_path: Path) -> None:
-    settings = {
-        "weave": {
-            "enabled": True,
-            "project": "test-project",
-            "entity": "test-entity"
-        },
-        "models": {
-            "enabled": True,
-            "project": "test-project",
-            "entity": "test-entity"
-        }
-    }
-    if "weave_hooks_disabled" in request.keywords:
-        settings["weave"]["enabled"] = False
-    if "models_hooks_disabled" in request.keywords:
-        settings["models"]["enabled"] = False
-    write_inspect_weave_settings(wandb_path, settings)
-
 
 ## Mock wandb/weave client calls
 
 @pytest.fixture(scope="function", autouse=True)
-def patch_wandb_client(inspect_weave_settings: None):
+def patch_wandb_client():
     mock_config = MagicMock()
     mock_config.update = MagicMock()
     mock_summary = MagicMock()
@@ -94,7 +66,7 @@ def reset_inspect_ai_hooks():
     hooks_startup_module._registry_hooks_loaded = False
 
 @pytest.fixture(scope="function")
-def patched_weave_evaluation_hooks(inspect_weave_settings: None, reset_inspect_ai_hooks: None):
+def patched_weave_evaluation_hooks(reset_inspect_ai_hooks: None):
     patched_evaluation_logger_class = MagicMock(spec=CustomEvaluationLogger)
     patched_evaluation_logger_class.return_value = patched_evaluation_logger_class
     patched_evaluation_logger_class._is_finalized = False
@@ -126,7 +98,7 @@ def patched_weave_evaluation_hooks(inspect_weave_settings: None, reset_inspect_a
             hook.settings = None # type: ignore
 
 @pytest.fixture(scope="function")
-def hello_world_eval(inspect_weave_settings: None) -> Callable[[], Task]:
+def hello_world_eval() -> Callable[[], Task]:
     """
     Returns a mock Inspect eval plus a set of mocks that can be used to check that Weave was called correctly.
     """
@@ -156,7 +128,7 @@ def raise_error() -> Solver:
     return solve
 
 @pytest.fixture(scope="function")
-def error_eval(inspect_weave_settings: None) -> Callable[[], Task]:
+def error_eval() -> Callable[[], Task]:
     """
     Returns a mock Inspect eval plus a set of mocks that can be used to check that Weave was called correctly.
     """
