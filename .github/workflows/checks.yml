@@ -3,29 +3,46 @@ name: Linting and testing checks
 on:
   pull_request:
     types: ["opened", "reopened", "synchronize"]
-    paths:
-      - "inspect_weave/**"
-      - "tests/**"
-      - ".github/workflows/checks.yml"
 
 env:
   UV_PROJECT_ENVIRONMENT: true
     
 jobs:
-  checks:
-    environment: production
+  has_changed:
     runs-on: ubuntu-latest
-    name: Run Linting and testing checks
-    timeout-minutes: 5
+    name: Check if the files have changed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+
+      - uses: marceloprado/has-changed-path@v1.0.1
+        id: requires-checks
+        with:
+          paths: inspect_weave tests .github/workflows/checks.yml
+    outputs:
+      changed: ${{ steps.requires-checks.outputs.changed }}
+
+  checks:
+    environment: production
+    runs-on: ubuntu-latest
+    needs: has_changed
+    name: Run Linting and testing checks
+    timeout-minutes: 5
+    if: needs.has_changed.outputs.changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
+  
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
