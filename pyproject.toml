@@ -19,8 +19,8 @@ dependencies = [
   "httpx[socks]",
   "inspect_viz",
   "playwright",
-  "pydantic >= 2.11",
-  "pydantic-settings >= 2.11"
+  "pydantic >= 2.11, <3",
+  "pydantic-settings"
 ]
 
 [project.optional-dependencies]
