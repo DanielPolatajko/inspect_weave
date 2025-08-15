@@ -6,6 +6,7 @@ on:
     paths:
       - "inspect_weave/**"
       - "tests/**"
+      - ".github/workflows/checks.yml"
 
 env:
   UV_PROJECT_ENVIRONMENT: true
