@@ -25,7 +25,7 @@ class TestWandBModelHooks:
             project="test-project"
         )
         
-        with patch('inspect_weave.hooks.model_hooks.SettingsLoader.parse_inspect_weave_settings') as mock_loader:
+        with patch('inspect_weave.hooks.model_hooks.SettingsLoader.load_inspect_weave_settings') as mock_loader:
             mock_loader.return_value.models = disabled_settings
             hooks = WandBModelHooks()
             assert not hooks.enabled()

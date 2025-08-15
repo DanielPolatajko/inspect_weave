@@ -20,7 +20,8 @@ dependencies = [
   "inspect_viz @ git+https://github.com/meridianlabs-ai/inspect_viz",
   "playwright",
   "pyyaml",
-  "pydantic"
+  "pydantic",
+  "pydantic-settings"
 ]
 
 [project.optional-dependencies]

@@ -10,14 +10,14 @@ class TestEndToEndInspectRuns:
     def test_weave_init_not_called_on_run_start_when_disabled(self, patched_weave_evaluation_hooks: dict[str, MagicMock], hello_world_eval: Callable[[], Task]) -> None:
         # Given - Mock settings loader to return disabled weave settings
         disabled_settings = InspectWeaveSettings(
-            weave=WeaveSettings(enabled=False, entity="test-entity", project="test-project"),
-            models=ModelsSettings(enabled=True, entity="test-entity", project="test-project")
+            weave=WeaveSettings(enabled=False, project="test-project", entity="test-entity"),
+            models=ModelsSettings(enabled=True, project="test-project", entity="test-entity")
         )
         
         weave_init = patched_weave_evaluation_hooks["weave_init"]
         
         # When
-        with patch('inspect_weave.hooks.weave_hooks.SettingsLoader.parse_inspect_weave_settings', return_value=disabled_settings):
+        with patch('inspect_weave.hooks.weave_hooks.SettingsLoader.load_inspect_weave_settings', return_value=disabled_settings):
             inspect_eval(hello_world_eval, model="mockllm/model")
 
         # Then
