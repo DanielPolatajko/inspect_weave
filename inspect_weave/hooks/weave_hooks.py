@@ -6,6 +6,7 @@ from inspect_weave.hooks.utils import format_model_name, format_score_types
 from inspect_weave.config.settings_loader import SettingsLoader
 from inspect_weave.config.settings import WeaveSettings
 from logging import getLogger
+from inspect_weave.weave_custom_overrides.autopatcher import get_inspect_patcher, CustomAutopatchSettings
 from inspect_weave.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
 from weave.trace.context import call_context
@@ -33,6 +34,7 @@ class WeaveEvaluationHooks(Hooks):
                 print_call_link=False
             )
         )
+        get_inspect_patcher(CustomAutopatchSettings().inspect).attempt_patch()
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
@@ -54,6 +56,7 @@ class WeaveEvaluationHooks(Hooks):
         # Clear the loggers dict
         self.weave_eval_loggers.clear()
         weave.finish()
+        get_inspect_patcher().undo_patch()
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
