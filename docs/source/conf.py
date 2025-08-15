@@ -10,7 +10,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
@@ -41,6 +41,8 @@ intersphinx_mapping = {
 intersphinx_disabled_domains = ["std"]
 
 templates_path = ["_templates"]
+
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "/")
 
 # -- Options for EPUB output
 epub_show_urls = "footnote"
