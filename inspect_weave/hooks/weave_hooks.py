@@ -25,7 +25,7 @@ class WeaveEvaluationHooks(Hooks):
     async def on_run_start(self, data: RunStart) -> None:
         # Ensure settings are loaded (in case enabled() wasn't called first)
         if self.settings is None:
-            self.settings = SettingsLoader.parse_inspect_weave_settings().weave
+            self.settings = SettingsLoader.load_inspect_weave_settings().weave
         
         weave.init(
             project_name=self.settings.project,
@@ -152,7 +152,7 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     def enabled(self) -> bool:
-        self.settings = self.settings or SettingsLoader.parse_inspect_weave_settings().weave
+        self.settings = self.settings or SettingsLoader.load_inspect_weave_settings().weave
         return self.settings.enabled
 
     def _get_eval_metadata(self, data: TaskStart) -> dict[str, str | dict[str, Any]]:

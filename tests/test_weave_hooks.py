@@ -68,7 +68,7 @@ class TestWeaveEvaluationHooks:
 
         # Then
         mock_weave_eval_logger.log_prediction.assert_called_once_with(
-            inputs={"input": "test_input"},
+            inputs={"sample_id": 1, "epoch": 1, "input": "test_input"},
             output="test_output"
         )
         mock_score_logger.log_score.assert_called_once_with(
@@ -105,7 +105,7 @@ class TestWeaveEvaluationHooks:
 
         # Then
         mock_weave_eval_logger.log_prediction.assert_called_once_with(
-            inputs={"input": "test_input"},
+            inputs={"sample_id": 1, "epoch": 1, "input": "test_input"},
             output="test_output"
         )
         mock_score_logger.log_score.assert_called_once_with(

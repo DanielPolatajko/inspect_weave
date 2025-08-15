@@ -14,13 +14,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-  "inspect_ai",
+  "inspect_ai >= 0.3.118",
   "weave",
   "httpx[socks]",
-  "inspect_viz @ git+https://github.com/meridianlabs-ai/inspect_viz",
+  "inspect_viz",
   "playwright",
-  "pyyaml",
-  "pydantic"
+  "pydantic >= 2.11, <3",
+  "pydantic-settings"
 ]
 
 [project.optional-dependencies]

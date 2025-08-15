@@ -42,7 +42,9 @@ In order to utilise the W&B integration, you will also need to setup a W&B proje
 
 To get set up with a new Weave project. follow the instructions [here](https://weave-docs.wandb.ai/), or to set up a W&B project, look [here](https://docs.wandb.ai/quickstart/) (they are basically the same, but it might be useful to follow the guide of the feature you're more interested in)
 
-If you have an existing project, for example `test-project`, you should run 
+#### Console configuration
+
+If you have an existing project, for example `test-project`, you can run 
 
 ```bash
 wandb login
@@ -58,9 +60,21 @@ wandb init
 
 `inspect_weave` will then by default use whichever project you set as default during the `wandb init` flow when writing to Weave.
 
+#### Environment variables
+
+If you are running Inspect in an automated environment where stepping through `wandb` CLI configurations is impractical, you can instead configure the integration with environment variables. To achieve an equivalent setup to the above, you can set the following env variables:
+
+- `WANDB_API_KEY` - set this to your `wandb` API key for authentication
+- `WANDB_ENTITY` - set this to the name of your `wandb` entity (i.e. team name)
+- `WANDB_PROJECT` - set this to the `wandb` project which you would like to write data to
+
+Environment variables take precedence over `wandb` settings set via the CLI, so if you want to override the settings, using env vars is a viable option.
+
+There are also a handful of `wandb` environment variables which are not directly parsed by the inspect_weave integration, but will influence the behaviour of `wandb` if passed at runtime. These can be found [here](https://docs.wandb.ai/guides/track/environment-variables/)
+
 ### Configuration
 
-`inspect_weave` works out-of-the-box after running `wandb init` - no additional configuration is required! By default, both Weave and Models integrations are enabled, using the project and entity from your wandb settings.
+`inspect_weave` works out-of-the-box after running `wandb init` - no additional configuration is required! By default, both Weave and Models integrations are enabled, using the project and entity from your wandb settings or set via env variables.
 
 #### Optional Customization
 
@@ -72,6 +86,20 @@ enabled = true  # Enable/disable Weave integration (default: true)
 
 [tool.inspect-weave.models]
 enabled = false  # Enable/disable Models integration (default: true)
+files = ["pyproject.toml", "log/*"]  # Files/folders to upload with Models run, path relative to your current working directory (default: none)
+```
+
+You can also manually set the `wandb` entity and project in `pyproject.toml` e.g.
+
+```toml
+[tool.inspect-weave.weave]
+wandb_entity = "test-entity"
+wandb_project = "test-project"
+
+[tool.inspect-weave.models]
+enabled = false  # Enable/disable Models integration (default: true)
+wandb_entity = "test-entity"
+wandb_project = "test-project"
 files = ["pyproject.toml", "log/*"]  # Files/folders to upload with Models run, path relative to your current working directory (default: none)
 ```
 
@@ -92,6 +120,17 @@ enabled = true   # Keep Models integration enabled
 ```
 
 This would disable the Weave integration while keeping the Models API integration enabled.
+
+#### Environment Variables
+
+You can also enable or disable the integrations by setting the following environment variables:
+
+- `INSPECT_WEAVE_MODELS_ENABLED`
+- `INSPECT_WEAVE_WEAVE_ENABLED`
+
+If the former is set to anything truthy, the Models integration will be enabled, and if it is set to anything falsey, the integration will be disabled. If it is unset, the settings loader will fallback to the `wandb` settings and `pyproject.toml` to determine whether to enable the integration.
+
+The latter env var controls the Weave integration in the same manner.
 
 
 ## Development
