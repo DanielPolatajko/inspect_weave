@@ -23,7 +23,7 @@ dependencies = [
   "pydantic-settings"
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = ["pytest", "pytest-asyncio", "ruff", "mypy", "pre-commit"]
 
 [project.urls]

@@ -138,7 +138,7 @@ The latter env var controls the Weave integration in the same manner.
 If you want to develop this project, you can fork and clone the repo and then run:
 
 ```bash
-pip install -e ".[dev]"
+pip install -e . --group dev
 pre-commit install
 ```
 
