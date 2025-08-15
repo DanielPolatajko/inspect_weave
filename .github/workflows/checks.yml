@@ -21,6 +21,8 @@ jobs:
         id: requires-checks
         with:
           paths: inspect_weave tests .github/workflows/checks.yml
+    outputs:
+      changed: ${{ steps.requires-checks.outputs.changed }}
 
   checks:
     environment: production
@@ -28,31 +30,26 @@ jobs:
     needs: has_changed
     name: Run Linting and testing checks
     timeout-minutes: 5
+    if: needs.has_changed.outputs.changed == 'true'
     steps:
 
       - name: Set up Python
-        if: has_changed.steps.requires-checks.outputs.changed == 'true'
         uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
   
       - name: Install uv
-        if: has_changed.steps.requires-checks.outputs.changed == 'true' 
         uses: astral-sh/setup-uv@v6
 
       - name: Install the project
-        if: has_changed.steps.requires-checks.outputs.changed == 'true'
         run: uv sync --locked --all-extras --dev
 
       - name: Ruff linting checks
-        if: has_changed.steps.requires-checks.outputs.changed == 'true'
         run: |
           uv run ruff check inspect_weave tests --fix
 
       - name: MyPy typing checks
-        if: has_changed.steps.requires-checks.outputs.changed == 'true'
         run: uv run mypy inspect_weave
 
       - name: Unit tests
-        if: has_changed.steps.requires-checks.outputs.changed == 'true'
         run: uv run pytest . 
