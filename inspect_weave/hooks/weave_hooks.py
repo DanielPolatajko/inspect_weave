@@ -91,8 +91,14 @@ class WeaveEvaluationHooks(Hooks):
         weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
         assert weave_eval_logger is not None
         
+        sample_id = int(data.sample.id)
+        epoch = data.sample.epoch
+        input_value = data.sample.input
+        # TODO: filter does not work for 'inputs' fields
         sample_score_logger = weave_eval_logger.log_prediction(
-            inputs={"input": data.sample.input},
+            inputs={"sample_id": sample_id,
+                    "epoch": epoch,
+                    "input": input_value},
             output=data.sample.output.completion
         )
         if data.sample.scores is not None:
@@ -141,7 +147,8 @@ class WeaveEvaluationHooks(Hooks):
 
         except Exception as e:
             logger.error(f"Failed to log metrics to Weave: {e}")
-            sample_score_logger.finish()
+
+        sample_score_logger.finish()
 
     @override
     def enabled(self) -> bool:
