@@ -13,6 +13,7 @@ env:
     
 jobs:
   checks:
+    environment: production
     runs-on: ubuntu-latest
     name: Run Linting and testing checks
     timeout-minutes: 5
