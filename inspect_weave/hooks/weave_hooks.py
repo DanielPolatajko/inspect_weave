@@ -1,14 +1,16 @@
+from typing import Any
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
-from inspect_weave.utils import format_model_name, format_score_types, parse_inspect_weave_settings, read_wandb_entity_and_project_name_from_settings
+from inspect_weave.hooks.utils import format_model_name, format_score_types
+from inspect_weave.config.settings_loader import SettingsLoader
+from inspect_weave.config.settings import WeaveSettings
 from logging import getLogger
 from inspect_weave.weave_custom_overrides.autopatcher import get_inspect_patcher, CustomAutopatchSettings
 from inspect_weave.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
 from weave.trace.context import call_context
 from typing_extensions import override
-from typing import Any
 
 logger = getLogger(__name__)
 
@@ -17,16 +19,17 @@ class WeaveEvaluationHooks(Hooks):
     Provides Inspect hooks for writing eval scores to the Weave Evaluations API.
     """
 
-    weave_eval_logger: CustomEvaluationLogger | None = None
-    settings: dict[str, Any] | None = None
+    weave_eval_loggers: dict[str, CustomEvaluationLogger] = {}
+    settings: WeaveSettings | None = None
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        _, project_name = read_wandb_entity_and_project_name_from_settings(logger=logger)
-        if project_name is None:
-            return
+        # Ensure settings are loaded (in case enabled() wasn't called first)
+        if self.settings is None:
+            self.settings = SettingsLoader.load_inspect_weave_settings().weave
+        
         weave.init(
-            project_name=project_name,
+            project_name=self.settings.project,
             settings=UserSettings(
                 print_call_link=False
             )
@@ -35,37 +38,47 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
-        if self.weave_eval_logger is not None:
-            if not self.weave_eval_logger._is_finalized:
+        # Finalize all active loggers
+        for task_id, weave_eval_logger in self.weave_eval_loggers.items():
+            if not weave_eval_logger._is_finalized:
                 if data.exception is not None:
-                    self.weave_eval_logger.finish(exception=data.exception)
+                    weave_eval_logger.finish(exception=data.exception)
                 elif errors := [eval.error for eval in data.logs]:
-                    self.weave_eval_logger.finish(
+                    weave_eval_logger.finish(
                         exception=WeaveEvaluationException(
                             message="Inspect run failed", 
                             error="\n".join([error.message for error in errors if error is not None])
                         )
                     )
                 else:
-                    self.weave_eval_logger.finish()
+                    weave_eval_logger.finish()
+        
+        # Clear the loggers dict
+        self.weave_eval_loggers.clear()
         weave.finish()
         get_inspect_patcher().undo_patch()
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
-        self.weave_eval_logger = CustomEvaluationLogger(
+        weave_eval_logger = CustomEvaluationLogger(
             name=data.spec.task,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
             model=model_name,
             eval_attributes=self._get_eval_metadata(data)
         )
-        assert self.weave_eval_logger._evaluate_call is not None
-        call_context.set_call_stack([self.weave_eval_logger._evaluate_call]).__enter__()
+        
+        # Store logger with task_id as key
+        self.weave_eval_loggers[data.eval_id] = weave_eval_logger
+        
+        assert weave_eval_logger._evaluate_call is not None
+        call_context.set_call_stack([weave_eval_logger._evaluate_call]).__enter__()
 
     @override
     async def on_task_end(self, data: TaskEnd) -> None:
-        assert self.weave_eval_logger is not None
+        weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
+        assert weave_eval_logger is not None
+        
         summary: dict[str, dict[str, int | float]] = {}
         if data.log and data.log.results:
             for score in data.log.results.scores:
@@ -74,14 +87,21 @@ class WeaveEvaluationHooks(Hooks):
                     summary[scorer_name] = {}
                     for metric_name, metric in score.metrics.items():
                         summary[scorer_name][metric_name] = metric.value
-        with weave.attributes({"test": "test"}):
-            self.weave_eval_logger.log_summary(summary)
+        weave_eval_logger.log_summary(summary)
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
-        assert self.weave_eval_logger is not None
-        sample_score_logger = self.weave_eval_logger.log_prediction(
-            inputs={"input": data.sample.input},
+        weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
+        assert weave_eval_logger is not None
+        
+        sample_id = int(data.sample.id)
+        epoch = data.sample.epoch
+        input_value = data.sample.input
+        # TODO: filter does not work for 'inputs' fields
+        sample_score_logger = weave_eval_logger.log_prediction(
+            inputs={"sample_id": sample_id,
+                    "epoch": epoch,
+                    "input": input_value},
             output=data.sample.output.completion
         )
         if data.sample.scores is not None:
@@ -92,19 +112,75 @@ class WeaveEvaluationHooks(Hooks):
                         scorer=k,
                         score=format_score_types(v.value)
                     )
-            sample_score_logger.finish()
+
+                    # Log various metrics to Weave
+        try:
+            # Total time
+            if (
+                hasattr(data.sample, "total_time")
+                and data.sample.total_time is not None
+            ):
+                sample_score_logger.log_score(
+                    scorer="total_time", score=data.sample.total_time
+                )
+
+            # Total tokens - model_usage is a dict of model_name -> ModelUsage
+            if hasattr(data.sample, "model_usage") and data.sample.model_usage:
+                # Get the first (and usually only) model's token usage
+                for model_name, usage in data.sample.model_usage.items():
+                    if usage.total_tokens is not None:
+                        sample_score_logger.log_score(
+                            scorer="total_tokens", score=usage.total_tokens
+                        )
+                        break  # Only log the first model's tokens
+
+            # Number of tools from metadata - metadata is a dict
+            if (
+                hasattr(data.sample, "metadata")
+                and data.sample.metadata
+                and "Annotator Metadata" in data.sample.metadata
+                and "Number of tools" in data.sample.metadata["Annotator Metadata"]
+            ):
+                sample_score_logger.log_score(
+                    scorer="num_tool_calls",
+                    score=int(
+                        data.sample.metadata["Annotator Metadata"]["Number of tools"]
+                    ),
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to log metrics to Weave: {e}")
+
+        sample_score_logger.finish()
 
     @override
     def enabled(self) -> bool:
-        self.settings = self.settings or parse_inspect_weave_settings()
-        # Will error if wandb project is not set
-        if (read_wandb_entity_and_project_name_from_settings(logger=logger) is None) or (not self.settings["weave"]["enabled"]):
-            return False
-        return True
+        self.settings = self.settings or SettingsLoader.load_inspect_weave_settings().weave
+        return self.settings.enabled
 
-    def _get_eval_metadata(self, data: TaskStart) -> dict[str, str]:
+    def _get_eval_metadata(self, data: TaskStart) -> dict[str, str | dict[str, Any]]:
+
         eval_metadata = data.spec.metadata or {}
-        eval_metadata["inspect_run_id"] = data.run_id
-        eval_metadata["inspect_task_id"] = data.spec.task_id
-        eval_metadata["inspect_eval_id"] = data.eval_id
+        
+        inspect_data = {
+            "run_id": data.run_id,
+            "task_id": data.spec.task_id,
+            "eval_id": data.eval_id,
+            "sample_count": data.spec.config.limit if data.spec.config.limit is not None else data.spec.dataset.samples
+        }
+        
+        # Add task_args key-value pairs
+        if data.spec.task_args:
+            for key, value in data.spec.task_args.items():
+                inspect_data[key] = value
+        
+        # Add config key-value pairs if config is not None
+        if data.spec.config is not None:
+            config_dict = data.spec.config.__dict__
+            for key, value in config_dict.items():
+                if value is not None:
+                    inspect_data[key] = value
+        
+        eval_metadata["inspect"] = inspect_data
+        
         return eval_metadata
