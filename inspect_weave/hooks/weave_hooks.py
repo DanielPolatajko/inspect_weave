@@ -28,7 +28,7 @@ class WeaveEvaluationHooks(Hooks):
             self.settings = SettingsLoader.load_inspect_weave_settings().weave
         
         weave.init(
-            project_name=self.settings.project,
+            project_name=f"{self.settings.entity}/{self.settings.project}",
             settings=UserSettings(
                 print_call_link=False
             )
@@ -94,13 +94,11 @@ class WeaveEvaluationHooks(Hooks):
         sample_id = int(data.sample.id)
         epoch = data.sample.epoch
         input_value = data.sample.input
-        # TODO: filter does not work for 'inputs' fields
-        sample_score_logger = weave_eval_logger.log_prediction(
-            inputs={"sample_id": sample_id,
-                    "epoch": epoch,
-                    "input": input_value},
-            output=data.sample.output.completion
-        )
+        with weave.attributes({"sample_id": sample_id, "epoch": epoch}):
+            sample_score_logger = weave_eval_logger.log_prediction(
+                inputs={"input": input_value},
+                output=data.sample.output.completion
+            )
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
                 score_metadata = (v.metadata or {}) | ({"explanation": v.explanation} if v.explanation is not None else {})
