@@ -5,7 +5,7 @@ from inspect_ai import task, Task, eval
 from inspect_ai.solver import generate, solver
 from inspect_ai.scorer import exact
 from inspect_ai.dataset import Sample
-from inspect_weave.autopatcher import add_weave_op_to_inspect_decorator
+from inspect_weave.weave_custom_overrides.autopatcher import add_weave_op_to_inspect_solver_decorator
 
 
 def test_add_weave_op_to_named_solver():
@@ -27,7 +27,7 @@ def test_add_weave_op_to_named_solver():
         # We need to get the actual decorator function that @solver(name="...") creates
         # The solver decorator with name creates a wrapper function
         original_solver_decorator = solver(name="custom_solver_name")
-        patched_decorator = add_weave_op_to_inspect_decorator(original_solver_decorator)
+        patched_decorator = add_weave_op_to_inspect_solver_decorator(original_solver_decorator)
         
         # Apply the patched decorator to a test function
         @patched_decorator
@@ -55,7 +55,7 @@ def test_add_weave_op_to_unnamed_solver():
         
         # Get the decorator created by @solver (without name)
         original_solver_decorator = solver
-        patched_decorator = add_weave_op_to_inspect_decorator(original_solver_decorator)
+        patched_decorator = add_weave_op_to_inspect_solver_decorator(original_solver_decorator)
         
         # Apply to a test function
         @patched_decorator  
@@ -94,4 +94,4 @@ def test_inspect_quickstart(
 
     calls = list(client.calls())
     assert len(calls) == 6
-    assert "inspect_task" in calls[1]._op_name
+    assert "inspect_task" in calls[-1]._op_name

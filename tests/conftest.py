@@ -18,6 +18,7 @@ from inspect_ai._util.registry import registry_find
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
 pytest_plugins = ["tests.conftest_weave_client"]
 
 ## Setup wandb directory and settings

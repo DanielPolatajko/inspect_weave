@@ -13,7 +13,8 @@
                 "--limit",
                 "5"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
         },
         {
             "name": "Python Debugger: Run Current File",

@@ -1,5 +1,5 @@
 from typing import Any
-from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart, TaskEnd
+from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, SampleStart, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
 from inspect_weave.hooks.utils import format_model_name, format_score_types
@@ -28,12 +28,13 @@ class WeaveEvaluationHooks(Hooks):
         if self.settings is None:
             self.settings = SettingsLoader.load_inspect_weave_settings().weave
         
-        weave.init(
+        self.weave_client = weave.init(
             project_name=self.settings.project,
             settings=UserSettings(
                 print_call_link=False
             )
         )
+        # self._decorate_inspect_function_with_weave_op(data.task_names)
         get_inspect_patcher(CustomAutopatchSettings().inspect).attempt_patch()
 
     @override
@@ -72,7 +73,7 @@ class WeaveEvaluationHooks(Hooks):
         self.weave_eval_loggers[data.eval_id] = weave_eval_logger
         
         assert weave_eval_logger._evaluate_call is not None
-        call_context.set_call_stack([weave_eval_logger._evaluate_call]).__enter__()
+        call_context.push_call(weave_eval_logger._evaluate_call)
 
     @override
     async def on_task_end(self, data: TaskEnd) -> None:
@@ -88,6 +89,13 @@ class WeaveEvaluationHooks(Hooks):
                     for metric_name, metric in score.metrics.items():
                         summary[scorer_name][metric_name] = metric.value
         weave_eval_logger.log_summary(summary)
+
+    @override
+    async def on_sample_start(self, data: SampleStart) -> None:
+        self.weave_client.create_call(
+            op=f"inspect_sample_{data.sample_id}",
+            inputs={"input": data.summary.input},
+        )
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
@@ -184,3 +192,27 @@ class WeaveEvaluationHooks(Hooks):
         eval_metadata["inspect"] = inspect_data
         
         return eval_metadata
+    
+    # def _decorate_inspect_function_with_weave_op(self, task_names: list[str]) -> None:
+    #     for task_name in task_names:
+    #         task = registry_lookup("task", task_name)()
+    #         if task is not None:
+    #             assert isinstance(task, Task)
+    #             solver = task.solver
+    #             reg_info = registry_info(solver)
+    #             if reg_info.name == "inspect_ai/chain":
+    #                 assert isinstance(solver, Chain)
+    #                 solver_name = "-".join([registry_info(s).name for s in solver._solvers])
+    #                 for s in solver._solvers:
+    #                     s.__call__ = weave.op(name=f"inspect_solver_{registry_info(s).name}")(s.__call__) # type: ignore
+    #             else:
+    #                 solver_name = reg_info.name
+    #             solver.__call__ = weave.op(name=f"inspect_solver_{solver_name}")(solver.__call__) # type: ignore
+
+    #             if task.scorer:
+    #                 weave_op_scorers = []
+    #                 for scorer in task.scorer:
+    #                     reg_scorer_info = registry_info(scorer)
+    #                     scorer = weave.op(scorer, name=f"inspect_scorer_{reg_scorer_info.name}")
+    #                     weave_op_scorers.append(scorer)
+    #                 task.scorer = weave_op_scorers
