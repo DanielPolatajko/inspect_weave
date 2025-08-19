@@ -1,4 +1,4 @@
-from weave.flow.eval_imperative import ScoreType
+from weave.evaluation.eval_imperative import ScoreType
 from inspect_ai.scorer import Value
 from typing import Sequence, Mapping
 from logging import getLogger

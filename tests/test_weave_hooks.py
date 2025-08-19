@@ -7,8 +7,8 @@ from inspect_ai._eval.eval import EvalLogs
 from inspect_weave.hooks import WeaveEvaluationHooks
 from inspect_ai.scorer import Score
 import pytest
-import weave
 from datetime import datetime
+from weave.evaluation.eval_imperative import ScoreLogger, EvaluationLogger
 
 @pytest.fixture(scope="function")
 def task_end_eval_log() -> EvalLog:
@@ -58,8 +58,8 @@ class TestWeaveEvaluationHooks:
             )
         )
 
-        mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
-        mock_score_logger = MagicMock(spec=weave.flow.eval_imperative.ScoreLogger)
+        mock_weave_eval_logger = MagicMock(spec=EvaluationLogger)
+        mock_score_logger = MagicMock(spec=ScoreLogger)
         mock_weave_eval_logger.log_prediction.return_value = mock_score_logger
         hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
@@ -95,8 +95,8 @@ class TestWeaveEvaluationHooks:
             )
         )
 
-        mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
-        mock_score_logger = MagicMock(spec=weave.flow.eval_imperative.ScoreLogger)
+        mock_weave_eval_logger = MagicMock(spec=EvaluationLogger)
+        mock_score_logger = MagicMock(spec=ScoreLogger)
         mock_weave_eval_logger.log_prediction.return_value = mock_score_logger
         hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
@@ -124,7 +124,7 @@ class TestWeaveEvaluationHooks:
             log=task_end_eval_log
         )
 
-        mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
+        mock_weave_eval_logger = MagicMock(spec=EvaluationLogger)
         hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
         # When
@@ -151,7 +151,7 @@ class TestWeaveEvaluationHooks:
             exception=e
         )
 
-        mock_weave_eval_logger = MagicMock(spec=weave.EvaluationLogger)
+        mock_weave_eval_logger = MagicMock(spec=EvaluationLogger)
         mock_weave_eval_logger.finish = MagicMock()
         mock_weave_eval_logger._is_finalized = False
         hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
