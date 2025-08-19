@@ -78,7 +78,7 @@ def patched_weave_evaluation_hooks(reset_inspect_ai_hooks: None):
     with (
         patch("inspect_weave.hooks.weave_hooks.weave.init", MagicMock()) as weave_init,
         patch("inspect_weave.hooks.weave_hooks.weave.finish", MagicMock()) as weave_finish,
-        patch("inspect_weave.hooks.weave_hooks.CustomEvaluationLogger", patched_evaluation_logger_class)
+        patch("inspect_weave.hooks.weave_hooks.EvaluationLogger", patched_evaluation_logger_class)
     ):
         weave_evaluation_hooks_instance = weave_evaluation_hooks() # type: ignore
         with patch("inspect_weave._registry.weave_evaluation_hooks", lambda: weave_evaluation_hooks_instance):
@@ -91,10 +91,8 @@ def patched_weave_evaluation_hooks(reset_inspect_ai_hooks: None):
 
     # reload settings for every test
     hooks = registry_find(lambda x: x.type == "hooks")
-    print(hooks)
     if hooks:
         for hook in hooks:
-            print(hook.settings)
             hook.settings = None # type: ignore
 
 @pytest.fixture(scope="function")

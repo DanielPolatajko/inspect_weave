@@ -69,7 +69,7 @@ class WeaveEvaluationHooks(Hooks):
         self.weave_eval_loggers[data.eval_id] = weave_eval_logger
         
         assert weave_eval_logger._evaluate_call is not None
-        call_context.set_call_stack([weave_eval_logger._evaluate_call]).__enter__()
+        call_context.push_call(weave_eval_logger._evaluate_call)
 
     @override
     async def on_task_end(self, data: TaskEnd) -> None:
