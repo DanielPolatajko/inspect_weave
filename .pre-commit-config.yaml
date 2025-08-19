@@ -9,6 +9,12 @@ repos:
         types: [python]
         pass_filenames: false
 
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.8.4
+    hooks:
+      - id: uv-lock
+
   - repo: local
     hooks:
       - id: mypy
