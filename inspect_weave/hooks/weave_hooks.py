@@ -97,10 +97,10 @@ class WeaveEvaluationHooks(Hooks):
     async def on_sample_start(self, data: SampleStart) -> None:
         if self.settings is not None and self.settings.autopatch:
             self.sample_calls[data.sample_id] = self.weave_client.create_call(
-                op=f"sample-{data.sample_id}",
+                op="inspect-sample",
                 inputs={"input": data.summary.input},
                 attributes={"sample_id": data.sample_id, "epoch": data.summary.epoch},
-                display_name=f"sample: {data.sample_id}"
+                display_name="inspect-sample"
             )
 
     @override
