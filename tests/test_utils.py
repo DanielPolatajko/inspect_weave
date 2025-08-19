@@ -1,6 +1,7 @@
 from inspect_weave.hooks.utils import format_model_name, format_score_types
 import pytest
 import re
+
 @pytest.mark.parametrize("model_name", [
     "google/vertex/gemini-2.0-flash",
     "anthropic/vertex/claude-3-5-sonnet-v2@20241022",

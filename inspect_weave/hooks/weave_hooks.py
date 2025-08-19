@@ -6,10 +6,10 @@ from inspect_weave.hooks.utils import format_model_name, format_score_types
 from inspect_weave.config.settings_loader import SettingsLoader
 from inspect_weave.config.settings import WeaveSettings
 from logging import getLogger
-from inspect_weave.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
 from weave.trace.context import call_context
 from typing_extensions import override
+from weave.evaluation.eval_imperative import EvaluationLogger
 
 logger = getLogger(__name__)
 
@@ -18,7 +18,7 @@ class WeaveEvaluationHooks(Hooks):
     Provides Inspect hooks for writing eval scores to the Weave Evaluations API.
     """
 
-    weave_eval_loggers: dict[str, CustomEvaluationLogger] = {}
+    weave_eval_loggers: dict[str, EvaluationLogger] = {}
     settings: WeaveSettings | None = None
 
     @override
@@ -58,7 +58,7 @@ class WeaveEvaluationHooks(Hooks):
     @override
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
-        weave_eval_logger = CustomEvaluationLogger(
+        weave_eval_logger = EvaluationLogger(
             name=data.spec.task,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
             model=model_name,
