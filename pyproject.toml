@@ -15,7 +15,7 @@ classifiers = [
 ]
 dependencies = [
   "inspect_ai >= 0.3.118",
-  "weave",
+  "weave >= 0.52.1",
   "httpx[socks]",
   "inspect_viz",
   "playwright",

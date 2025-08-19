@@ -65,6 +65,8 @@ class WeaveSettings(BaseSettings):
     project: str = Field(alias="WANDB_PROJECT", description="Project to write to for the Weave integration")
     entity: str = Field(alias="WANDB_ENTITY", description="Entity to write to for the Weave integration")
 
+    autopatch: bool = Field(default=False, description="Whether to automatically patch Inspect with Weave calls for tracing")
+
     @classmethod
     def settings_customise_sources(
         cls,

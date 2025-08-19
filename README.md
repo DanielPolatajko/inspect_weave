@@ -103,6 +103,19 @@ wandb_project = "test-project"
 files = ["pyproject.toml", "log/*"]  # Files/folders to upload with Models run, path relative to your current working directory (default: none)
 ```
 
+#### Autopatching
+
+For the Weave integration, there is an experimental autopatching feature which is disabled by default. This patches some Inspect functions with Weave tracing calls, such that the Weave traces UI displays a call trace which more closely resembles the structure of an Inspect eval (e.g. one call per sample, with child calls for each solver and scorer).
+
+This feature can be configured with the `autopatch` parameter e.g.
+
+```toml
+[tool.inspect-weave.weave]
+autopatch = false
+```
+
+or by setting the environment variable `INSPECT_WEAVE_WEAVE_AUTOPATCH=false`.
+
 ### Running Inspect with the integration
 
 Once you have performed the above steps, the integration will be enabled for future Inspect runs in your environment by default. The Inspect logger output will link to the Weave dashboard where you can track and visualise eval results.

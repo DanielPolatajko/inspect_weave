@@ -11,15 +11,9 @@ import weave
 from typing import Callable
 
 import pytest
-from weave.trace_server import clickhouse_trace_server_batched
-from weave.trace_server import environment as ts_env
 from weave.trace_server.sqlite_trace_server import SqliteTraceServer
 import os
 
-import shutil
-import signal
-import subprocess
-import tempfile
 import time
 import urllib
 
@@ -30,6 +24,11 @@ import base64
 from weave.trace_server import (
     external_to_internal_trace_server_adapter,
 )
+
+"""
+This file is a pared-down version of the weave test client from the client lib, since it's pretty useful for testing.
+We should write our own mock client when the chance arises.
+"""
 
 
 class TwoWayMapping:
@@ -195,204 +194,6 @@ def _check_server_health(
         f"Server not healthy @ {urllib.parse.urljoin(base_url, endpoint)}: no response"
     )
     return False
-
-
-def ensure_clickhouse_db_container_running(
-    host: str, port: int
-) -> typing.Callable[[], None]:
-    """
-    ClickHouse server fixture that automatically starts a server if one isn't already running.
-
-    This fixture checks if a ClickHouse server is already running on the configured host/port.
-    If not, it automatically starts a Docker-based ClickHouse server for testing.
-
-    The fixture handles cleanup by stopping the Docker container when the test session ends.
-    """
-    server_up = check_server_up(host, port, 0)
-    started_container = None
-
-    if not server_up:
-        # Try to start a ClickHouse server using Docker
-        container_name = "weave-python-test-clickhouse-server"
-
-        # First, ensure any existing container is stopped and removed
-        subprocess.run(
-            ["docker", "stop", container_name], capture_output=True, check=False
-        )
-        subprocess.run(
-            ["docker", "rm", container_name], capture_output=True, check=False
-        )
-
-        # Start the ClickHouse container
-        process = subprocess.Popen(
-            [
-                "docker",
-                "run",
-                "-d",
-                "--rm",
-                "-e",
-                "CLICKHOUSE_DB=default",
-                "-e",
-                "CLICKHOUSE_USER=default",
-                "-e",
-                "CLICKHOUSE_PASSWORD=",
-                "-e",
-                "CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1",
-                "-p",
-                f"{port}:8123",
-                "--name",
-                container_name,
-                "--ulimit",
-                "nofile=262144:262144",
-                "clickhouse/clickhouse-server",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
-        # Wait for the process to complete and get the container ID
-        stdout, stderr = process.communicate()
-        if process.returncode != 0:
-            pytest.fail(f"Failed to start ClickHouse container: {stderr.decode()}")
-
-        started_container = container_name
-
-        # Wait for the server to be healthy
-        server_up = check_server_up(host, port)
-        if not server_up:
-            # Clean up the container if server didn't start properly
-            subprocess.run(
-                ["docker", "stop", container_name], capture_output=True, check=False
-            )
-            pytest.fail(
-                f"ClickHouse server failed to start and become healthy on {host}:{port}"
-            )
-
-    def cleanup():
-        if started_container:
-            subprocess.run(
-                ["docker", "stop", started_container], capture_output=True, check=False
-            )
-
-    return cleanup
-
-
-def ensure_clickhouse_db_process_running(
-    host: str, port: int
-) -> typing.Callable[[], None]:
-    """
-    ClickHouse server fixture that automatically starts a server process if one isn't already running.
-
-    This fixture checks if a ClickHouse server is already running on the configured host/port.
-    If not, it automatically starts a ClickHouse server process for testing.
-
-    The fixture handles cleanup by stopping the process when the test session ends.
-    """
-    server_up = check_server_up(host, port, 1)
-    started_process = None
-    temp_dir = None
-
-    if not server_up:
-        # Check if clickhouse-server is available
-        clickhouse_binary = shutil.which("clickhouse-server")
-        if not clickhouse_binary:
-            pytest.fail(
-                "ClickHouse server binary not found. Please install ClickHouse or use Docker version."
-            )
-
-        # Create temporary directory for ClickHouse data and config
-        temp_dir = tempfile.mkdtemp(prefix="weave-clickhouse-test-")
-
-        # Start the ClickHouse server process
-        try:
-            process = subprocess.Popen(
-                [
-                    clickhouse_binary,
-                    # "--config-file", config_path,
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=temp_dir,
-                preexec_fn=os.setsid
-                if os.name != "nt"
-                else None,  # Create new process group on Unix
-            )
-            started_process = process
-
-            # Give the server a moment to start
-            time.sleep(2)
-
-            # Wait for the server to be healthy
-            server_up = check_server_up(host, port)
-            if not server_up:
-                # Clean up the process if server didn't start properly
-                if process.poll() is None:  # Process is still running
-                    if os.name != "nt":
-                        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                    else:
-                        process.terminate()
-                    process.wait()
-                pytest.fail(
-                    f"ClickHouse server process failed to start and become healthy on {host}:{port}"
-                )
-
-        except Exception as e:
-            pytest.fail(f"Failed to start ClickHouse server process: {e!s}")
-
-    def cleanup():
-        if (
-            started_process and started_process.poll() is None
-        ):  # Process is still running
-            try:
-                if os.name != "nt":
-                    # On Unix, terminate the entire process group
-                    os.killpg(os.getpgid(started_process.pid), signal.SIGTERM)
-                else:
-                    # On Windows, just terminate the process
-                    started_process.terminate()
-                started_process.wait(timeout=10)
-            except (ProcessLookupError, subprocess.TimeoutExpired):
-                # If graceful termination fails, force kill
-                try:
-                    if os.name != "nt":
-                        os.killpg(os.getpgid(started_process.pid), signal.SIGKILL)
-                    else:
-                        started_process.kill()
-                except ProcessLookupError:
-                    pass  # Process already dead
-
-        if temp_dir and os.path.exists(temp_dir):
-            try:
-                shutil.rmtree(temp_dir)
-            except Exception:
-                pass  # Best effort cleanup
-
-    return cleanup
-
-
-@pytest.fixture(scope="session")
-def ensure_clickhouse_db(
-    request,
-) -> typing.Callable[[], typing.Generator[tuple[str, int], None, None]]:
-    def ensure_clickhouse_db_inner() -> typing.Generator[tuple[str, int], None, None]:
-        host, port = ts_env.wf_clickhouse_host(), ts_env.wf_clickhouse_port()
-        if os.environ.get("CI"):
-            yield host, port
-            return
-        if request.config.getoption("--clickhouse-process") == "true":
-            cleanup = ensure_clickhouse_db_process_running(
-                host=host,
-                port=port,
-            )
-        else:
-            cleanup = ensure_clickhouse_db_container_running(
-                host=host,
-                port=port,
-            )
-        yield host, port
-        cleanup()
-
-    return ensure_clickhouse_db_inner
 
 # Force testing to never report wandb sentry events
 os.environ["WANDB_ERROR_REPORTING"] = "false"
@@ -561,59 +362,6 @@ def make_server_recorder(server: tsi.TraceServerInterface):  # type: ignore
     return ServerRecorder(server)
 
 
-def pytest_addoption(parser):
-    try:
-        parser.addoption(
-            "--trace-server",
-            action="store",
-            default="clickhouse",
-            help="Specify the client object to use: sqlite or clickhouse",
-        )
-        parser.addoption(
-            "--ch",
-            "--clickhouse",
-            action="store_true",
-            help="Use clickhouse server (shorthand for --trace-server=clickhouse)",
-        )
-        parser.addoption(
-            "--clickhouse-process",
-            action="store",
-            default="false",
-            help="Use a clickhouse process instead of a container",
-        )
-    except ValueError:
-        pass
-
-
-def pytest_collection_modifyitems(config, items):
-    # Add the trace_server marker to all tests that have a client fixture
-    for item in items:
-        if "trace_server" in item.fixturenames:
-            item.add_marker(pytest.mark.trace_server)
-
-
-@pytest.fixture
-def get_ch_trace_server(
-    ensure_clickhouse_db,
-) -> Callable[[], TestOnlyUserInjectingExternalTraceServer]:
-    def ch_trace_server_inner() -> TestOnlyUserInjectingExternalTraceServer:
-        host, port = next(ensure_clickhouse_db())
-
-        ch_server = clickhouse_trace_server_batched.ClickHouseTraceServer(
-            host=host,
-            port=port,
-        )
-        ch_server.ch_client.command("DROP DATABASE IF EXISTS db_management")
-        ch_server.ch_client.command(
-            f"DROP DATABASE IF EXISTS {ts_env.wf_clickhouse_database()}"
-        )
-        ch_server._run_migrations()
-
-        return externalize_trace_server(ch_server, TEST_ENTITY)
-
-    return ch_trace_server_inner
-
-
 @pytest.fixture
 def get_sqlite_trace_server() -> Callable[[], TestOnlyUserInjectingExternalTraceServer]:
     def sqlite_trace_server_inner() -> TestOnlyUserInjectingExternalTraceServer:
@@ -627,12 +375,10 @@ def get_sqlite_trace_server() -> Callable[[], TestOnlyUserInjectingExternalTrace
 
 @pytest.fixture
 def trace_server(
-    request, get_ch_trace_server, get_sqlite_trace_server
+    request, get_sqlite_trace_server
 ) -> TestOnlyUserInjectingExternalTraceServer:
     trace_server_flag = get_trace_server_flag(request)
-    if trace_server_flag == "clickhouse":
-        return get_ch_trace_server()
-    elif trace_server_flag == "sqlite":
+    if trace_server_flag == "sqlite":
         return get_sqlite_trace_server()
     else:
         # Once we split the trace server and client code, we can raise here.
