@@ -14,7 +14,9 @@ from weave.flow.model import Model
 from weave.trace.context import call_context
 from weave.trace.context.weave_client_context import require_weave_client
 from weave.trace.op import Op
+from weave.trace.weave_client import Call
 from weave.flow.eval_imperative import  _active_evaluation_loggers, current_output, EvaluationLogger, current_predict_call, current_summary, IMPERATIVE_EVAL_MARKER
+from weave.flow.eval_imperative import ScoreLogger, _set_current_output
 
 
 
@@ -174,3 +176,39 @@ class CustomEvaluationLogger(EvaluationLogger):
         # Remove from global registry since we've manually finalized
         if self in _active_evaluation_loggers:
             _active_evaluation_loggers.remove(self)
+
+    def log_prediction(self, inputs: dict, output: Any, parent_call: Call | None = None) -> ScoreLogger:
+        """Log a prediction to the Evaluation, and return a reference.
+
+        The reference can be used to log scores which are attached to the specific
+        prediction instance."""
+        # Use set_call_stack to temporarily set the evaluation as the parent
+        assert self._evaluate_call is not None
+
+        call_stack = [self._evaluate_call] if parent_call is None else [parent_call, self._evaluate_call]
+
+        with call_context.set_call_stack(call_stack):
+            # Make the prediction call
+            with _set_current_output(output):
+                with weave.attributes(IMPERATIVE_EVAL_MARKER):
+                    _, predict_and_score_call = (
+                        self._pseudo_evaluation.predict_and_score.call(
+                            self._pseudo_evaluation,
+                            self.model,
+                            inputs,
+                            __require_explicit_finish=True,
+                        )
+                    )
+
+            # Get the predict_call from the context variable
+            predict_call = current_predict_call.get()
+            if predict_call is None:
+                raise ValueError("predict_call should not be None")
+
+            pred = ScoreLogger(
+                predict_and_score_call=predict_and_score_call,
+                evaluate_call=self._evaluate_call,
+                predict_call=predict_call,
+            )
+            self._accumulated_predictions.append(pred)
+            return pred

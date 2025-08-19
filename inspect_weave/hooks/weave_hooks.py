@@ -92,13 +92,16 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_sample_start(self, data: SampleStart) -> None:
-        self.weave_client.create_call(
-            op=f"inspect_sample_{data.sample_id}",
+        self.sample_call = self.weave_client.create_call(
+            op=f"sample: {data.sample_id}",
             inputs={"input": data.summary.input},
+            attributes={"sample_id": data.sample_id, "epoch": data.summary.epoch}
         )
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
+        call_context.pop_call(self.sample_call.id)
+        self.weave_client.finish_call(self.sample_call)
         weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
         assert weave_eval_logger is not None
         
