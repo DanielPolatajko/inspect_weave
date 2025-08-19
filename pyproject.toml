@@ -20,7 +20,8 @@ dependencies = [
   "inspect_viz",
   "playwright",
   "pydantic >= 2.11, <3",
-  "pydantic-settings"
+  "pydantic-settings",
+  "datasets >= 4.0.0"
 ]
 
 [dependency-groups]

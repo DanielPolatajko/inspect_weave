@@ -16,7 +16,9 @@ from weave.trace.context.weave_client_context import require_weave_client
 from weave.trace.op import Op
 from weave.trace.weave_client import Call
 from weave.flow.eval_imperative import  _active_evaluation_loggers, current_output, EvaluationLogger, current_predict_call, current_summary, IMPERATIVE_EVAL_MARKER
-from weave.flow.eval_imperative import ScoreLogger, _set_current_output
+from weave.flow.eval_imperative import ScoreLogger, _set_current_output, IMPERATIVE_SCORE_MARKER, _set_current_score, global_scorer_cache, _cast_to_cls, current_score
+import json
+from weave.flow.scorer import Scorer
 
 
 
@@ -25,6 +27,64 @@ ID = str
 ScoreType = Union[float, bool, dict]
 
 logger = logging.getLogger(__name__)
+
+class CustomScoreLogger(ScoreLogger):
+    """
+    This class provides an imperative interface for logging scores.
+    TODO: We can probably replace this by instead instrumenting the Inspect scorer from the autopatcher.    
+    """
+
+    # model_id: ID
+    predict_and_score_call: Call
+    evaluate_call: Call
+    predict_call: Call
+    parent_call: Call | None = Field(default=None, description="A parent call to log the score to.")
+
+    async def alog_score(
+        self,
+        scorer: Annotated[
+            Scorer | dict | str,
+            Field(
+                description="A metadata-only scorer used for comparisons."
+                "Alternatively, you can pass a dict of attributes or just a string"
+                "representing the ID of your scorer."
+            ),
+        ],
+        score: ScoreType,
+    ) -> None:
+        if not isinstance(scorer, Scorer):
+            scorer_id = json.dumps(scorer)
+            scorer = global_scorer_cache.get_scorer(
+                scorer_id, lambda: _cast_to_cls(Scorer)(scorer)
+            )
+        if self._has_finished:
+            raise ValueError("Cannot log score after finish has been called")
+
+        # this is safe; pydantic casting is done in validator above
+        scorer = cast(Scorer, scorer)
+
+        @weave.op(name=scorer.name, enable_code_capture=False)
+        def score_method(self: Scorer, *, output: Any, inputs: Any) -> ScoreType:
+            # TODO: can't use score here because it will cause version mismatch
+            # return score
+            return cast(ScoreType, current_score.get())
+
+        scorer.__dict__["score"] = MethodType(score_method, scorer)
+
+        # attach the score feedback to the predict call
+        call_stack = [self.evaluate_call, self.predict_and_score_call]
+        if self.parent_call is not None:
+            call_stack = [self.parent_call] + call_stack
+        with call_context.set_call_stack(
+            call_stack
+        ):
+            with _set_current_score(score):
+                with weave.attributes(IMPERATIVE_SCORE_MARKER):
+                    await self.predict_call.apply_scorer(scorer)
+
+        # this is always true because of how the scorer is created in the validator
+        scorer_name = cast(str, scorer.name)
+        self._captured_scores[scorer_name] = score
 
 class CustomEvaluationLogger(EvaluationLogger):
     """This class provides an imperative interface for logging evaluations.
@@ -205,10 +265,11 @@ class CustomEvaluationLogger(EvaluationLogger):
             if predict_call is None:
                 raise ValueError("predict_call should not be None")
 
-            pred = ScoreLogger(
+            pred = CustomScoreLogger(
                 predict_and_score_call=predict_and_score_call,
                 evaluate_call=self._evaluate_call,
                 predict_call=predict_call,
+                parent_call=parent_call,
             )
             self._accumulated_predictions.append(pred)
             return pred

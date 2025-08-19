@@ -29,18 +29,17 @@ class WeaveEvaluationHooks(Hooks):
             self.settings = SettingsLoader.load_inspect_weave_settings().weave
         
         self.weave_client = weave.init(
-            project_name=self.settings.project,
+            project_name=f"{self.settings.entity}/{self.settings.project}",
             settings=UserSettings(
                 print_call_link=False
             )
         )
-        # self._decorate_inspect_function_with_weave_op(data.task_names)
         get_inspect_patcher(CustomAutopatchSettings().inspect).attempt_patch()
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
         # Finalize all active loggers
-        for task_id, weave_eval_logger in self.weave_eval_loggers.items():
+        for weave_eval_logger in self.weave_eval_loggers.values():
             if not weave_eval_logger._is_finalized:
                 if data.exception is not None:
                     weave_eval_logger.finish(exception=data.exception)
@@ -56,7 +55,7 @@ class WeaveEvaluationHooks(Hooks):
         
         # Clear the loggers dict
         self.weave_eval_loggers.clear()
-        weave.finish()
+        self.weave_client.finish()
         get_inspect_patcher().undo_patch()
 
     @override
@@ -100,7 +99,6 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
-        call_context.pop_call(self.sample_call.id)
         self.weave_client.finish_call(self.sample_call)
         weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
         assert weave_eval_logger is not None
@@ -108,13 +106,11 @@ class WeaveEvaluationHooks(Hooks):
         sample_id = int(data.sample.id)
         epoch = data.sample.epoch
         input_value = data.sample.input
-        # TODO: filter does not work for 'inputs' fields
-        sample_score_logger = weave_eval_logger.log_prediction(
-            inputs={"sample_id": sample_id,
-                    "epoch": epoch,
-                    "input": input_value},
-            output=data.sample.output.completion
-        )
+        with weave.attributes({"sample_id": sample_id, "epoch": epoch}):
+            sample_score_logger = weave_eval_logger.log_prediction(
+                inputs={"input": input_value},
+                output=data.sample.output.completion
+            )
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
                 score_metadata = (v.metadata or {}) | ({"explanation": v.explanation} if v.explanation is not None else {})
@@ -161,6 +157,7 @@ class WeaveEvaluationHooks(Hooks):
 
         except Exception as e:
             logger.error(f"Failed to log metrics to Weave: {e}")
+            raise e
 
         sample_score_logger.finish()
 
@@ -195,27 +192,3 @@ class WeaveEvaluationHooks(Hooks):
         eval_metadata["inspect"] = inspect_data
         
         return eval_metadata
-    
-    # def _decorate_inspect_function_with_weave_op(self, task_names: list[str]) -> None:
-    #     for task_name in task_names:
-    #         task = registry_lookup("task", task_name)()
-    #         if task is not None:
-    #             assert isinstance(task, Task)
-    #             solver = task.solver
-    #             reg_info = registry_info(solver)
-    #             if reg_info.name == "inspect_ai/chain":
-    #                 assert isinstance(solver, Chain)
-    #                 solver_name = "-".join([registry_info(s).name for s in solver._solvers])
-    #                 for s in solver._solvers:
-    #                     s.__call__ = weave.op(name=f"inspect_solver_{registry_info(s).name}")(s.__call__) # type: ignore
-    #             else:
-    #                 solver_name = reg_info.name
-    #             solver.__call__ = weave.op(name=f"inspect_solver_{solver_name}")(solver.__call__) # type: ignore
-
-    #             if task.scorer:
-    #                 weave_op_scorers = []
-    #                 for scorer in task.scorer:
-    #                     reg_scorer_info = registry_info(scorer)
-    #                     scorer = weave.op(scorer, name=f"inspect_scorer_{reg_scorer_info.name}")
-    #                     weave_op_scorers.append(scorer)
-    #                 task.scorer = weave_op_scorers
