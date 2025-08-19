@@ -703,6 +703,15 @@ wheels = [
 ]
 
 [[package]]
+name = "emoji"
+version = "2.14.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cb/7d/01cddcbb6f5cc0ba72e00ddf9b1fa206c802d557fd0a20b18e130edf1336/emoji-2.14.1.tar.gz", hash = "sha256:f8c50043d79a2c1410ebfae833ae1868d5941a67a6cd4d18377e2eb0bd79346b", size = 597182, upload-time = "2025-01-16T06:31:24.983Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/db/a0335710caaa6d0aebdaa65ad4df789c15d89b7babd9a30277838a7d9aac/emoji-2.14.1-py3-none-any.whl", hash = "sha256:35a8a486c1460addb1499e3bf7929d3889b2e2841a57401903699fef595e942b", size = 590617, upload-time = "2025-01-16T06:31:23.526Z" },
+]
+
+[[package]]
 name = "envier"
 version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1320,6 +1329,7 @@ dev = [
     { name = "clickhouse-connect" },
     { name = "confluent-kafka" },
     { name = "ddtrace" },
+    { name = "emoji" },
     { name = "google-cloud-storage" },
     { name = "mypy" },
     { name = "opentelemetry-proto" },
@@ -1348,6 +1358,7 @@ dev = [
     { name = "clickhouse-connect" },
     { name = "confluent-kafka" },
     { name = "ddtrace" },
+    { name = "emoji" },
     { name = "google-cloud-storage" },
     { name = "mypy" },
     { name = "opentelemetry-proto" },
