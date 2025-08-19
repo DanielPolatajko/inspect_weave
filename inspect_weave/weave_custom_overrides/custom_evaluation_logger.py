@@ -8,15 +8,15 @@ from pydantic import (
 )
 
 import weave
-from weave.flow.dataset import Dataset
-from weave.flow.eval import Evaluation, default_evaluation_display_name
+from weave.dataset.dataset import Dataset
+from weave.evaluation.eval import Evaluation, default_evaluation_display_name
 from weave.flow.model import Model
 from weave.trace.context import call_context
 from weave.trace.context.weave_client_context import require_weave_client
 from weave.trace.op import Op
 from weave.trace.weave_client import Call
-from weave.flow.eval_imperative import  _active_evaluation_loggers, current_output, EvaluationLogger, current_predict_call, current_summary, IMPERATIVE_EVAL_MARKER
-from weave.flow.eval_imperative import ScoreLogger, _set_current_output, IMPERATIVE_SCORE_MARKER, _set_current_score, global_scorer_cache, _cast_to_cls, current_score
+from weave.evaluation.eval_imperative import  _active_evaluation_loggers, current_output, EvaluationLogger, current_predict_call, current_summary, IMPERATIVE_EVAL_MARKER
+from weave.evaluation.eval_imperative import ScoreLogger, _set_current_output, IMPERATIVE_SCORE_MARKER, _set_current_score, global_scorer_cache, _cast_to_cls, current_score
 import json
 from weave.flow.scorer import Scorer
 
