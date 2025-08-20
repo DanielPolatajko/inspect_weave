@@ -28,6 +28,7 @@ class WeaveEvaluationHooks(Hooks):
     async def on_run_start(self, data: RunStart) -> None:
         # Ensure settings are loaded (in case enabled() wasn't called first)
         if self.settings is None:
+            logger.info("Loading settings")
             self.settings = SettingsLoader.load_inspect_weave_settings().weave
         
         self.weave_client = weave.init(

@@ -87,6 +87,7 @@ def patched_weave_evaluation_hooks(reset_inspect_ai_hooks: None):
         patch("inspect_weave.hooks.weave_hooks.CustomEvaluationLogger", patched_evaluation_logger_class)
     ):
         weave_evaluation_hooks_instance = weave_evaluation_hooks() # type: ignore
+        weave_evaluation_hooks_instance.settings = None
         with patch("inspect_weave._registry.weave_evaluation_hooks", lambda: weave_evaluation_hooks_instance):
             yield {
                 "weave_evaluation_hooks": weave_evaluation_hooks_instance,
