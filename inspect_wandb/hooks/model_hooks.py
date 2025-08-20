@@ -13,8 +13,8 @@ from inspect_viz.plot import write_png_async
 from inspect_viz.view.beta import scores_heatmap
 from inspect_viz import Data
 from inspect_ai.analysis import evals_df
-from inspect_weave.config.settings_loader import SettingsLoader
-from inspect_weave.config.settings import ModelsSettings
+from inspect_wandb.config.settings_loader import SettingsLoader
+from inspect_wandb.config.settings import ModelsSettings
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,13 @@ class WandBModelHooks(Hooks):
 
     @override
     def enabled(self) -> bool:
-        self.settings = self.settings or SettingsLoader.load_inspect_weave_settings().models
+        self.settings = self.settings or SettingsLoader.load_inspect_wandb_settings().models
         return self.settings.enabled
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
         if self.settings is None:
-            self.settings = SettingsLoader.load_inspect_weave_settings().models
+            self.settings = SettingsLoader.load_inspect_wandb_settings().models
             
         self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 

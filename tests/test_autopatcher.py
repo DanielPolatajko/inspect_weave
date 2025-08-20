@@ -11,7 +11,7 @@ from .conftest_weave_client import TEST_ENTITY
 
 @pytest.fixture(scope="function")
 def patch_weave_client_in_hooks(client: WeaveClient) -> Generator[WeaveClient, None, None]:
-    with patch("inspect_weave.hooks.weave_hooks.weave.init", MagicMock(return_value=client)):
+    with patch("inspect_wandb.hooks.weave_hooks.weave.init", MagicMock(return_value=client)):
         yield client
 
 
@@ -36,9 +36,9 @@ def test_inspect_quickstart(
         )
     
     # configure settings via env variables
-    monkeypatch.setenv("INSPECT_WEAVE_MODELS_ENABLED", "false")
-    monkeypatch.setenv("INSPECT_WEAVE_WEAVE_ENABLED", "true")
-    monkeypatch.setenv("INSPECT_WEAVE_WEAVE_AUTOPATCH", "true")
+    monkeypatch.setenv("INSPECT_WANDB_MODELS_ENABLED", "false")
+    monkeypatch.setenv("INSPECT_WANDB_WEAVE_ENABLED", "true")
+    monkeypatch.setenv("INSPECT_WANDB_WEAVE_AUTOPATCH", "true")
 
     eval(hello_world, model="mockllm/model")
 
@@ -53,6 +53,6 @@ def test_inspect_quickstart(
     assert "inspect_ai-generate" in calls[2]._op_name
 
     # reset the env variables
-    monkeypatch.delenv("INSPECT_WEAVE_MODELS_ENABLED")
-    monkeypatch.delenv("INSPECT_WEAVE_WEAVE_ENABLED")
-    monkeypatch.delenv("INSPECT_WEAVE_WEAVE_AUTOPATCH")
+    monkeypatch.delenv("INSPECT_WANDB_MODELS_ENABLED")
+    monkeypatch.delenv("INSPECT_WANDB_WEAVE_ENABLED")
+    monkeypatch.delenv("INSPECT_WANDB_WEAVE_AUTOPATCH")

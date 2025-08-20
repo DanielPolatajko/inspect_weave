@@ -1,11 +1,11 @@
-# `inspect_weave`
+# `inspect_wandb`
 Integration with [Inspect](https://inspect.aisi.org.uk/) and Weights & Biases. Initially, this integration was focused primarily on [Weave](https://weave-docs.wandb.ai/), but we are also expanding to include the [wandb Models API](https://docs.wandb.ai/guides/models/)
 
 ## Demo Video
 
 <div>
     <a href="https://www.loom.com/share/1578ad78581146d08348cfe2a13270b0">
-      <p>WIP: Integrating Inspect Weave with Inspect AI for LLM Evaluations 🚀 - Watch Video</p>
+      <p>WIP: Integrating Inspect WandB with Inspect AI for LLM Evaluations 🚀 - Watch Video</p>
     </a>
     <a href="https://www.loom.com/share/1578ad78581146d08348cfe2a13270b0">
       <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/1578ad78581146d08348cfe2a13270b0-d6183465b48a6d2b-full-play.gif">
@@ -58,7 +58,7 @@ You should then set the project which you'd like to write eval results to. This 
 wandb init
 ```
 
-`inspect_weave` will then by default use whichever project you set as default during the `wandb init` flow when writing to Weave.
+`inspect_wandb` will then by default use whichever project you set as default during the `wandb init` flow when writing to Weave.
 
 #### Environment variables
 
@@ -70,21 +70,21 @@ If you are running Inspect in an automated environment where stepping through `w
 
 Environment variables take precedence over `wandb` settings set via the CLI, so if you want to override the settings, using env vars is a viable option.
 
-There are also a handful of `wandb` environment variables which are not directly parsed by the inspect_weave integration, but will influence the behaviour of `wandb` if passed at runtime. These can be found [here](https://docs.wandb.ai/guides/track/environment-variables/)
+There are also a handful of `wandb` environment variables which are not directly parsed by the inspect_wandb integration, but will influence the behaviour of `wandb` if passed at runtime. These can be found [here](https://docs.wandb.ai/guides/track/environment-variables/)
 
 ### Configuration
 
-`inspect_weave` works out-of-the-box after running `wandb init` - no additional configuration is required! By default, both Weave and Models integrations are enabled, using the project and entity from your wandb settings or set via env variables.
+`inspect_wandb` works out-of-the-box after running `wandb init` - no additional configuration is required! By default, both Weave and Models integrations are enabled, using the project and entity from your wandb settings or set via env variables.
 
 #### Optional Customization
 
-For advanced users who want to customize the behavior, you can add a `[tool.inspect-weave]` section to your project's `pyproject.toml` file:
+For advanced users who want to customize the behavior, you can add a `[tool.inspect-wandb]` section to your project's `pyproject.toml` file:
 
 ```toml
-[tool.inspect-weave.weave]
+[tool.inspect-wandb.weave]
 enabled = true  # Enable/disable Weave integration (default: true)
 
-[tool.inspect-weave.models]
+[tool.inspect-wandb.models]
 enabled = false  # Enable/disable Models integration (default: true)
 files = ["pyproject.toml", "log/*"]  # Files/folders to upload with Models run, path relative to your current working directory (default: none)
 ```
@@ -92,11 +92,11 @@ files = ["pyproject.toml", "log/*"]  # Files/folders to upload with Models run, 
 You can also manually set the `wandb` entity and project in `pyproject.toml` e.g.
 
 ```toml
-[tool.inspect-weave.weave]
+[tool.inspect-wandb.weave]
 wandb_entity = "test-entity"
 wandb_project = "test-project"
 
-[tool.inspect-weave.models]
+[tool.inspect-wandb.models]
 enabled = false  # Enable/disable Models integration (default: true)
 wandb_entity = "test-entity"
 wandb_project = "test-project"
@@ -110,11 +110,11 @@ For the Weave integration, there is an experimental autopatching feature which i
 This feature can be configured with the `autopatch` parameter e.g.
 
 ```toml
-[tool.inspect-weave.weave]
+[tool.inspect-wandb.weave]
 autopatch = true
 ```
 
-or by setting the environment variable `INSPECT_WEAVE_WEAVE_AUTOPATCH=true`.
+or by setting the environment variable `INSPECT_WANDB_WEAVE_AUTOPATCH=true`.
 
 ### Running Inspect with the integration
 
@@ -125,10 +125,10 @@ Once you have performed the above steps, the integration will be enabled for fut
 You can disable either integration by adding configuration to your `pyproject.toml`. For example:
 
 ```toml
-[tool.inspect-weave.weave]
+[tool.inspect-wandb.weave]
 enabled = false  # Disable Weave integration
 
-[tool.inspect-weave.models]  
+[tool.inspect-wandb.models]  
 enabled = true   # Keep Models integration enabled
 ```
 
@@ -138,8 +138,8 @@ This would disable the Weave integration while keeping the Models API integratio
 
 You can also enable or disable the integrations by setting the following environment variables:
 
-- `INSPECT_WEAVE_MODELS_ENABLED`
-- `INSPECT_WEAVE_WEAVE_ENABLED`
+- `INSPECT_WANDB_MODELS_ENABLED`
+- `INSPECT_WANDB_WEAVE_ENABLED`
 
 If the former is set to anything truthy, the Models integration will be enabled, and if it is set to anything falsey, the integration will be disabled. If it is unset, the settings loader will fallback to the `wandb` settings and `pyproject.toml` to determine whether to enable the integration.
 

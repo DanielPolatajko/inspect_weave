@@ -9,7 +9,7 @@ class TestEndToEndInspectRuns:
     """
     def test_weave_init_not_called_on_run_start_when_disabled(self, patched_weave_evaluation_hooks: dict[str, MagicMock], hello_world_eval: Callable[[], Task], monkeypatch: MonkeyPatch) -> None:
         # Given - Mock settings loader to return disabled weave settings
-        monkeypatch.setenv("INSPECT_WEAVE_WEAVE_ENABLED", "false")
+        monkeypatch.setenv("INSPECT_WANDB_WEAVE_ENABLED", "false")
         
         weave_init = patched_weave_evaluation_hooks["weave_init"]
         
@@ -21,7 +21,7 @@ class TestEndToEndInspectRuns:
         weave_init.assert_not_called()
 
         # Cleanup
-        monkeypatch.delenv("INSPECT_WEAVE_WEAVE_ENABLED")
+        monkeypatch.delenv("INSPECT_WANDB_WEAVE_ENABLED")
 
     def test_weave_init_called_on_run_start(self, patched_weave_evaluation_hooks: dict[str, MagicMock], hello_world_eval: Callable[[], Task]) -> None:
         # Given

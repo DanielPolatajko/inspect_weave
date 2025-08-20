@@ -1,5 +1,5 @@
-from inspect_weave.hooks.model_hooks import WandBModelHooks
-from inspect_weave.config.settings import ModelsSettings
+from inspect_wandb.hooks.model_hooks import WandBModelHooks
+from inspect_wandb.config.settings import ModelsSettings
 from unittest.mock import patch
 
 class TestWandBModelHooks:
@@ -25,7 +25,7 @@ class TestWandBModelHooks:
             project="test-project"
         )
         
-        with patch('inspect_weave.hooks.model_hooks.SettingsLoader.load_inspect_weave_settings') as mock_loader:
+        with patch('inspect_wandb.hooks.model_hooks.SettingsLoader.load_inspect_wandb_settings') as mock_loader:
             mock_loader.return_value.models = disabled_settings
             hooks = WandBModelHooks()
             assert not hooks.enabled()
