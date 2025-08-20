@@ -15,6 +15,9 @@
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": false,
+            "env": {
+                "INSPECT_WEAVE_WEAVE_AUTOPATCH": "true"
+            }
         },
         {
             "name": "Python Debugger: Run Current File",

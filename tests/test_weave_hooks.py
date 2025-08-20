@@ -9,6 +9,8 @@ from inspect_ai.scorer import Score
 import pytest
 from datetime import datetime
 from weave.evaluation.eval_imperative import ScoreLogger, EvaluationLogger
+from inspect_weave.config.settings import WeaveSettings
+from weave.trace.weave_client import WeaveClient
 
 @pytest.fixture(scope="function")
 def task_end_eval_log() -> EvalLog:
@@ -33,6 +35,15 @@ def task_end_eval_log() -> EvalLog:
             ]
         )
     )
+
+@pytest.fixture(scope="function")
+def test_settings() -> WeaveSettings:
+    return WeaveSettings(
+        enabled=True,
+        entity="test-entity",
+        project="test-project",
+        autopatch=False
+    )
     
 
 class TestWeaveEvaluationHooks:
@@ -41,9 +52,10 @@ class TestWeaveEvaluationHooks:
     """
 
     @pytest.mark.asyncio
-    async def test_writes_eval_score_to_weave_on_sample_end(self) -> None:
+    async def test_writes_eval_score_to_weave_on_sample_end(self, test_settings: WeaveSettings) -> None:
         # Given
         hooks = WeaveEvaluationHooks()
+        hooks.settings = test_settings
         sample = SampleEnd(
             run_id="test_run_id",
             eval_id="test_eval_id",
@@ -69,7 +81,8 @@ class TestWeaveEvaluationHooks:
         # Then
         mock_weave_eval_logger.log_prediction.assert_called_once_with(
             inputs={"input": "test_input"},
-            output="test_output"
+            output="test_output",
+            parent_call=None
         )
         mock_score_logger.log_score.assert_called_once_with(
             scorer="test_score",
@@ -78,9 +91,10 @@ class TestWeaveEvaluationHooks:
         mock_score_logger.finish.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_writes_eval_score_to_weave_on_sample_end_with_metadata(self) -> None:
+    async def test_writes_eval_score_to_weave_on_sample_end_with_metadata(self, test_settings: WeaveSettings) -> None:
         # Given
         hooks = WeaveEvaluationHooks()
+        hooks.settings = test_settings
         sample = SampleEnd(
             run_id="test_run_id",
             eval_id="test_eval_id",
@@ -106,7 +120,8 @@ class TestWeaveEvaluationHooks:
         # Then
         mock_weave_eval_logger.log_prediction.assert_called_once_with(
             inputs={"input": "test_input"},
-            output="test_output"
+            output="test_output",
+            parent_call=None
         )
         mock_score_logger.log_score.assert_called_once_with(
             scorer="test_score",
@@ -115,9 +130,10 @@ class TestWeaveEvaluationHooks:
         mock_score_logger.finish.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_writes_inspect_eval_summary_metrics_to_weave_on_task_end(self, task_end_eval_log: EvalLog) -> None:
+    async def test_writes_inspect_eval_summary_metrics_to_weave_on_task_end(self, task_end_eval_log: EvalLog, test_settings: WeaveSettings) -> None:
         # Given
         hooks = WeaveEvaluationHooks()
+        hooks.settings = test_settings
         task_end = TaskEnd(
             run_id="test_run_id",
             eval_id="test_eval_id",
@@ -141,10 +157,12 @@ class TestWeaveEvaluationHooks:
         )
 
     @pytest.mark.asyncio
-    async def test_passes_exception_to_weave_on_error_run_end(self) -> None:
+    async def test_passes_exception_to_weave_on_error_run_end(self, test_settings: WeaveSettings) -> None:
         # Given
         e = Exception("test_exception")
         hooks = WeaveEvaluationHooks()
+        hooks.settings = test_settings
+        hooks.weave_client = MagicMock(spec=WeaveClient)
         task_end = RunEnd(
             run_id="test_run_id",
             logs=EvalLogs([]),       

@@ -1,15 +1,17 @@
 from typing import Any
-from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart, TaskEnd
+from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, SampleStart, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
 from inspect_weave.hooks.utils import format_model_name, format_score_types
 from inspect_weave.config.settings_loader import SettingsLoader
 from inspect_weave.config.settings import WeaveSettings
 from logging import getLogger
+from inspect_weave.weave_custom_overrides.autopatcher import get_inspect_patcher, CustomAutopatchSettings
+from inspect_weave.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_weave.exceptions import WeaveEvaluationException
+from weave.trace.weave_client import Call
 from weave.trace.context import call_context
 from typing_extensions import override
-from weave.evaluation.eval_imperative import EvaluationLogger
 
 logger = getLogger(__name__)
 
@@ -18,26 +20,30 @@ class WeaveEvaluationHooks(Hooks):
     Provides Inspect hooks for writing eval scores to the Weave Evaluations API.
     """
 
-    weave_eval_loggers: dict[str, EvaluationLogger] = {}
+    weave_eval_loggers: dict[str, CustomEvaluationLogger] = {}
     settings: WeaveSettings | None = None
+    sample_calls: dict[str, Call] = {}
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
         # Ensure settings are loaded (in case enabled() wasn't called first)
         if self.settings is None:
+            logger.info("Loading settings")
             self.settings = SettingsLoader.load_inspect_weave_settings().weave
         
-        weave.init(
+        self.weave_client = weave.init(
             project_name=f"{self.settings.entity}/{self.settings.project}",
             settings=UserSettings(
                 print_call_link=False
             )
         )
+        if self.settings.autopatch:
+            get_inspect_patcher(CustomAutopatchSettings().inspect).attempt_patch()
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
         # Finalize all active loggers
-        for task_id, weave_eval_logger in self.weave_eval_loggers.items():
+        for weave_eval_logger in self.weave_eval_loggers.values():
             if not weave_eval_logger._is_finalized:
                 if data.exception is not None:
                     weave_eval_logger.finish(exception=data.exception)
@@ -53,12 +59,14 @@ class WeaveEvaluationHooks(Hooks):
         
         # Clear the loggers dict
         self.weave_eval_loggers.clear()
-        weave.finish()
+        self.weave_client.finish(use_progress_bar=False)
+        if self.settings is not None and self.settings.autopatch:
+            get_inspect_patcher().undo_patch()
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
         model_name = format_model_name(data.spec.model) 
-        weave_eval_logger = EvaluationLogger(
+        weave_eval_logger = CustomEvaluationLogger(
             name=data.spec.task,
             dataset=data.spec.dataset.name or "test_dataset", # TODO: set a default dataset name
             model=model_name,
@@ -87,6 +95,16 @@ class WeaveEvaluationHooks(Hooks):
         weave_eval_logger.log_summary(summary)
 
     @override
+    async def on_sample_start(self, data: SampleStart) -> None:
+        if self.settings is not None and self.settings.autopatch:
+            self.sample_calls[data.sample_id] = self.weave_client.create_call(
+                op="inspect-sample",
+                inputs={"input": data.summary.input},
+                attributes={"sample_id": data.sample_id, "epoch": data.summary.epoch},
+                display_name="inspect-sample"
+            )
+
+    @override
     async def on_sample_end(self, data: SampleEnd) -> None:
         weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
         assert weave_eval_logger is not None
@@ -97,7 +115,8 @@ class WeaveEvaluationHooks(Hooks):
         with weave.attributes({"sample_id": sample_id, "epoch": epoch}):
             sample_score_logger = weave_eval_logger.log_prediction(
                 inputs={"input": input_value},
-                output=data.sample.output.completion
+                output=data.sample.output.completion,
+                parent_call=self.sample_calls[data.sample_id] if self.settings is not None and self.settings.autopatch else None
             )
         if data.sample.scores is not None:
             for k,v in data.sample.scores.items():
@@ -145,8 +164,12 @@ class WeaveEvaluationHooks(Hooks):
 
         except Exception as e:
             logger.error(f"Failed to log metrics to Weave: {e}")
+            raise e
 
         sample_score_logger.finish()
+        if self.settings is not None and self.settings.autopatch:
+            self.weave_client.finish_call(self.sample_calls[data.sample_id], output=data.sample.output.completion)
+            self.sample_calls.pop(data.sample_id)
 
     @override
     def enabled(self) -> bool:
