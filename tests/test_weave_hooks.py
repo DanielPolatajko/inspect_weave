@@ -4,12 +4,12 @@ from inspect_ai.hooks import SampleEnd, TaskEnd, RunEnd
 from inspect_ai.model import ChatCompletionChoice, ModelOutput, ChatMessageAssistant
 from inspect_ai.log import EvalSample, EvalResults, EvalScore, EvalMetric, EvalSpec, EvalConfig, EvalDataset
 from inspect_ai._eval.eval import EvalLogs
-from inspect_weave.hooks import WeaveEvaluationHooks
+from inspect_wandb.hooks import WeaveEvaluationHooks
 from inspect_ai.scorer import Score
 import pytest
 from datetime import datetime
 from weave.evaluation.eval_imperative import ScoreLogger, EvaluationLogger
-from inspect_weave.config.settings import WeaveSettings
+from inspect_wandb.config.settings import WeaveSettings
 from weave.trace.weave_client import WeaveClient
 
 @pytest.fixture(scope="function")

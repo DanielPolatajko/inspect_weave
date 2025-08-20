@@ -1,4 +1,4 @@
-from inspect_weave.config.settings import WeaveSettings, ModelsSettings, InspectWeaveSettings
+from inspect_wandb.config.settings import WeaveSettings, ModelsSettings, InspectWandBSettings
 from logging import getLogger
 
 logger = getLogger(__name__)
@@ -6,10 +6,10 @@ logger = getLogger(__name__)
 class SettingsLoader:
 
     @classmethod
-    def load_inspect_weave_settings(cls) -> InspectWeaveSettings:
+    def load_inspect_wandb_settings(cls) -> InspectWandBSettings:
         """
         Load settings with this priority:
-        1. Environment variables (both WANDB_* vars defined by W&B, and INSPECT_WEAVE_* vars defined by this package)
+        1. Environment variables (both WANDB_* vars defined by W&B, and INSPECT_WANDB_* vars defined by this package)
         2. Wandb settings file (for entity/project - handled by WandBSettingsSource)
         3. Initial settings (programmatic overrides)
         4. Pyproject.toml customizations
@@ -21,7 +21,7 @@ class SettingsLoader:
         """
     
         # Simply create the settings - the sources are defined as part of the pydantic settings model
-        return InspectWeaveSettings(
+        return InspectWandBSettings(
             weave=WeaveSettings.model_validate({}),
             models=ModelsSettings.model_validate({})
         )

@@ -16,7 +16,7 @@
             "cwd": "${workspaceFolder}",
             "justMyCode": false,
             "env": {
-                "INSPECT_WEAVE_WEAVE_AUTOPATCH": "true"
+                "INSPECT_WANDB_WEAVE_AUTOPATCH": "true"
             }
         },
         {

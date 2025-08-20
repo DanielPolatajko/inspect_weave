@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources import PydanticBaseSettingsSource, PyprojectTomlConfigSettingsSource
-from inspect_weave.config.wandb_settings_source import WandBSettingsSource
+from inspect_wandb.config.wandb_settings_source import WandBSettingsSource
 
 class ModelsSettings(BaseSettings):
     """
@@ -10,8 +10,8 @@ class ModelsSettings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="INSPECT_WEAVE_MODELS_", 
-        pyproject_toml_table_header=("tool", "inspect-weave", "models"),
+        env_prefix="INSPECT_WANDB_MODELS_", 
+        pyproject_toml_table_header=("tool", "inspect-wandb", "models"),
         populate_by_name=True,
         validate_by_name=True,
         validate_by_alias=True,
@@ -53,8 +53,8 @@ class WeaveSettings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="INSPECT_WEAVE_WEAVE_", 
-        pyproject_toml_table_header=("tool", "inspect-weave", "weave"),
+        env_prefix="INSPECT_WANDB_WEAVE_", 
+        pyproject_toml_table_header=("tool", "inspect-wandb", "weave"),
         populate_by_name=True,
         validate_by_name=True,
         validate_by_alias=True,
@@ -90,6 +90,6 @@ class WeaveSettings(BaseSettings):
             PyprojectTomlConfigSettingsSource(settings_cls)
         )
 
-class InspectWeaveSettings(BaseModel):
+class InspectWandBSettings(BaseModel):
     weave: WeaveSettings = Field(description="Settings for the Weave integration")
     models: ModelsSettings = Field(description="Settings for the Models integration")

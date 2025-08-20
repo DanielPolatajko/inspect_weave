@@ -1,5 +1,5 @@
 from inspect_ai.hooks import hooks
-from inspect_weave.hooks import WeaveEvaluationHooks, WandBModelHooks
+from inspect_wandb.hooks import WeaveEvaluationHooks, WandBModelHooks
 
 @hooks(name="weave_evaluation_hooks", description="Weave evaluation integration")
 def weave_evaluation_hooks():

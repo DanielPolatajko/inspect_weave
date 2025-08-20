@@ -10,7 +10,7 @@ from inspect_ai.solver import generate, Solver, TaskState, Generate, solver
 from unittest.mock import MagicMock
 import inspect_ai.hooks._startup as hooks_startup_module
 from unittest.mock import patch
-from inspect_weave.providers import weave_evaluation_hooks
+from inspect_wandb.providers import weave_evaluation_hooks
 from pytest import TempPathFactory
 from inspect_ai._util.registry import registry_find
 from weave.evaluation.eval_imperative import EvaluationLogger
@@ -59,11 +59,11 @@ def patch_wandb_client():
     mock_save = MagicMock()
     mock_wandb_init = MagicMock()
     with (
-        patch("inspect_weave.hooks.model_hooks.wandb.init", mock_wandb_init),
-        patch("inspect_weave.hooks.model_hooks.wandb.save", mock_save),
-        patch("inspect_weave.hooks.model_hooks.wandb.config", mock_config),
-        patch("inspect_weave.hooks.model_hooks.wandb.summary", mock_summary),
-        patch("inspect_weave.hooks.model_hooks.wandb.log", mock_log)
+        patch("inspect_wandb.hooks.model_hooks.wandb.init", mock_wandb_init),
+        patch("inspect_wandb.hooks.model_hooks.wandb.save", mock_save),
+        patch("inspect_wandb.hooks.model_hooks.wandb.config", mock_config),
+        patch("inspect_wandb.hooks.model_hooks.wandb.summary", mock_summary),
+        patch("inspect_wandb.hooks.model_hooks.wandb.log", mock_log)
     ):
         yield mock_wandb_init, mock_save, mock_config, mock_summary, mock_log
 
@@ -88,12 +88,12 @@ def patched_weave_evaluation_hooks(reset_inspect_ai_hooks: None):
     patched_evaluation_logger_class._evaluate_call = MagicMock()
 
     with (
-        patch("inspect_weave.hooks.weave_hooks.weave.init", MagicMock()) as weave_init,
-        patch("inspect_weave.hooks.weave_hooks.weave.finish", MagicMock()) as weave_finish,
-        patch("inspect_weave.hooks.weave_hooks.CustomEvaluationLogger", patched_evaluation_logger_class)
+        patch("inspect_wandb.hooks.weave_hooks.weave.init", MagicMock()) as weave_init,
+        patch("inspect_wandb.hooks.weave_hooks.weave.finish", MagicMock()) as weave_finish,
+        patch("inspect_wandb.hooks.weave_hooks.CustomEvaluationLogger", patched_evaluation_logger_class)
     ):
         weave_evaluation_hooks_instance = weave_evaluation_hooks() # type: ignore
-        with patch("inspect_weave._registry.weave_evaluation_hooks", lambda: weave_evaluation_hooks_instance):
+        with patch("inspect_wandb._registry.weave_evaluation_hooks", lambda: weave_evaluation_hooks_instance):
             yield {
                 "weave_evaluation_hooks": weave_evaluation_hooks_instance,
                 "weave_init": weave_init,
