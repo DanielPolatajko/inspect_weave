@@ -22,12 +22,12 @@ To use this integration, you can install the package in the environment where yo
 
 __pip__
 ```bash
-pip install git+https://github.com/DanielPolatajko/inspect_weave.git
+pip install git+https://github.com/DanielPolatajko/inspect_wandb.git
 ```
 
 __uv__
 ```bash
-uv pip install git+https://github.com/DanielPolatajko/inspect_weave.git
+uv pip install git+https://github.com/DanielPolatajko/inspect_wandb.git
 ```
 
 If you intend to use the W&B Models API integration, you also need to subsequently install `chromium` with:
