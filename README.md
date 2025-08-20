@@ -111,10 +111,10 @@ This feature can be configured with the `autopatch` parameter e.g.
 
 ```toml
 [tool.inspect-weave.weave]
-autopatch = false
+autopatch = true
 ```
 
-or by setting the environment variable `INSPECT_WEAVE_WEAVE_AUTOPATCH=false`.
+or by setting the environment variable `INSPECT_WEAVE_WEAVE_AUTOPATCH=true`.
 
 ### Running Inspect with the integration
 
@@ -151,7 +151,7 @@ The latter env var controls the Weave integration in the same manner.
 If you want to develop this project, you can fork and clone the repo and then run:
 
 ```bash
-pip install -e . --group dev
+uv sync --group dev
 pre-commit install
 ```
 
