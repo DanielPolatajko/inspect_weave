@@ -8,7 +8,6 @@ from pytest import MonkeyPatch
 import pytest
 from unittest.mock import MagicMock, patch
 from .conftest_weave_client import TEST_ENTITY
-from inspect_ai._util.registry import registry_find
 
 @pytest.fixture(scope="function")
 def patch_weave_client_in_hooks(client: WeaveClient) -> Generator[WeaveClient, None, None]:
@@ -18,7 +17,8 @@ def patch_weave_client_in_hooks(client: WeaveClient) -> Generator[WeaveClient, N
 
 def test_inspect_quickstart(
     patch_weave_client_in_hooks: WeaveClient,
-    monkeypatch: MonkeyPatch
+    monkeypatch: MonkeyPatch,
+    reset_inspect_ai_hooks: None
 ) -> None:
     @task
     def hello_world():
@@ -56,9 +56,3 @@ def test_inspect_quickstart(
     monkeypatch.delenv("INSPECT_WEAVE_MODELS_ENABLED")
     monkeypatch.delenv("INSPECT_WEAVE_WEAVE_ENABLED")
     monkeypatch.delenv("INSPECT_WEAVE_WEAVE_AUTOPATCH")
-
-    # reload settings for every test
-    hooks = registry_find(lambda x: x.type == "hooks")
-    if hooks:
-        for hook in hooks:
-            hook.settings = None # type: ignore
