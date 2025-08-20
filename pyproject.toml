@@ -28,8 +28,8 @@ dependencies = [
 dev = ["pytest", "ruff", "mypy", "pre-commit", "clickhouse-connect", "ddtrace", "opentelemetry-proto", "sqlparse", "boto3", "azure-storage-blob", "google-cloud-storage", "confluent-kafka", "emoji", "pytest-asyncio"]
 
 [project.urls]
-Homepage = "https://github.com/DanielPolatajko/inspect_weave"
-Issues = "https://github.com/DanielPolatajko/inspect_weave/issues"
+Homepage = "https://github.com/DanielPolatajko/inspect_wandb"
+Issues = "https://github.com/DanielPolatajko/inspect_wandb/issues"
 
 [build-system]
 requires = ["setuptools"]
