@@ -76,6 +76,13 @@ def reset_inspect_ai_hooks():
     if hooks:
         for hook in hooks:
             hook.settings = None # type: ignore
+            # Reset our new state variables to ensure clean test isolation
+            if hasattr(hook, '_hooks_enabled'):
+                hook._hooks_enabled = None
+            if hasattr(hook, '_weave_initialized'):
+                hook._weave_initialized = False
+            if hasattr(hook, '_wandb_initialized'):
+                hook._wandb_initialized = False
 
 @pytest.fixture(scope="function")
 def patched_weave_evaluation_hooks(reset_inspect_ai_hooks: None):
