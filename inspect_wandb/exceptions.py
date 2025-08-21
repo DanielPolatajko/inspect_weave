@@ -18,3 +18,13 @@ class WandBNotInitialisedException(Exception):
 
     def __str__(self) -> str:
         return self.message
+
+class InvalidSettingsError(Exception):
+    """
+    Exception raised when the settings are invalid.
+    """
+    def __init__(self):
+        self.message = "Settings must contain only 'weave' and 'models' keys"
+
+    def __str__(self) -> str:
+        return self.message

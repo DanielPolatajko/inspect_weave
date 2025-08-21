@@ -1,20 +1,15 @@
 import logging
-import os
 from typing_extensions import override
 
-import pandas as pd
 import wandb
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart
 from inspect_ai.log import EvalSample
 from inspect_ai.scorer import CORRECT
-from inspect_viz import Component
-from inspect_viz.plot import write_png_async
-
-from inspect_viz.view.beta import scores_heatmap
-from inspect_viz import Data
-from inspect_ai.analysis import evals_df
 from inspect_wandb.config.settings_loader import SettingsLoader
 from inspect_wandb.config.settings import ModelsSettings
+from inspect_wandb.config.extras_manager import INSTALLED_EXTRAS
+if INSTALLED_EXTRAS["viz"]:
+    from inspect_wandb.viz.inspect_viz_writer import InspectVizWriter
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +26,12 @@ class WandBModelHooks(Hooks):
     _wandb_initialized: bool = False
     _hooks_enabled: bool | None = None
 
+    def __init__(self):
+        if INSTALLED_EXTRAS["viz"]:
+            self.viz_writer = InspectVizWriter()
+        else:
+            self.viz_writer = None
+
     def _check_enable_override(self, data: TaskStart) -> bool|None:
         """
         Check TaskStart metadata to determine if hooks should be enabled
@@ -39,15 +40,21 @@ class WandBModelHooks(Hooks):
             return None
         return data.spec.metadata.get("models_enabled")
 
+    def _load_settings(self) -> None:
+        if self.settings is None:
+            self.settings = SettingsLoader.load_inspect_wandb_settings(
+                {"weave": {}, "models": {"viz": self.viz_writer is not None}}
+            ).models
+
     @override
     def enabled(self) -> bool:
-        self.settings = self.settings or SettingsLoader.load_inspect_wandb_settings().models
+        self._load_settings()
+        assert self.settings is not None
         return self.settings.enabled
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
-        if self.settings is None:
-            self.settings = SettingsLoader.load_inspect_wandb_settings().models
+        self._load_settings()
         # Note: wandb.init() moved to lazy initialization in on_task_start
 
     @override
@@ -55,15 +62,9 @@ class WandBModelHooks(Hooks):
         # Only proceed with cleanup if WandB was actually initialized
         if not self._wandb_initialized:
             return
-        
-        try:
-            logs = [log.location for log in data.logs]
-            self.run.config["logs"] = logs
-            df = evals_df(logs)
-            await self._log_scores_heatmap(data, df)
-            self._log_summary(data)
-        except Exception as e:
-            logger.warning(f"Error in wandb_hooks: {e}")
+
+        if self.settings is not None and self.settings.viz and self.viz_writer is not None:
+            await self.viz_writer.log_scores_heatmap(data, self.run)
 
         if self.settings is not None and self.settings.files:
             for file in self.settings.files:
@@ -73,9 +74,8 @@ class WandBModelHooks(Hooks):
     @override
     async def on_task_start(self, data: TaskStart) -> None:
         # Ensure settings are loaded
-        if self.settings is None:
-            logger.info("Loading settings in on_task_start")
-            self.settings = SettingsLoader.load_inspect_wandb_settings().models
+        self._load_settings()
+        assert self.settings is not None
         
         # Check enablement only on first task (all tasks share same metadata)
         if self._hooks_enabled is None:
@@ -120,19 +120,6 @@ class WandBModelHooks(Hooks):
             wandb.log(
                 {Metric.SAMPLES: self._total_samples, Metric.ACCURACY: self._accuracy()}
             )
-
-    async def _log_scores_heatmap(self, data: RunEnd, df: pd.DataFrame) -> None:
-        viz_data = Data.from_dataframe(df)
-        plot = scores_heatmap(viz_data, task_name="task_display_name", model_name="model", score_value="score_headline_value")
-
-        await self._log_image(data.run_id, plot, "scores_heatmap")
-
-    async def _log_image(self, run_id: str, plot: Component, name: str) -> None:
-        path = f"./.plots/{run_id}/{name}.png"
-        if not os.path.exists(f"./.plots/{run_id}"):
-            os.makedirs(f"./.plots/{run_id}")
-        await write_png_async(path, plot)
-        wandb.log({name: wandb.Image(path)})
 
     def _log_summary(self, data: RunEnd) -> None:
         summary = {
