@@ -17,9 +17,9 @@ import os
 
 # -- Project information -----------------------------------------------------
 
-project = "Inspect Weave"
-copyright = "2025, Inspect Weave"
-author = "Inspect Weave"
+project = "Inspect WandB"
+copyright = "2025, Inspect WandB"
+author = "Inspect WandB"
 
 
 # -- General configuration ---------------------------------------------------

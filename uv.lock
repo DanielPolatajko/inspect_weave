@@ -1308,7 +1308,7 @@ wheels = [
 ]
 
 [[package]]
-name = "inspect-weave"
+name = "inspect-wandb"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

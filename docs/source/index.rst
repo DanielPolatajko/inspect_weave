@@ -1,4 +1,4 @@
-Welcome to Inspect Weave's documentation!
+Welcome to Inspect WandB's documentation!
 ========================================
 
-**Inspect Weave** is a Python library for integrating Inspect with Weights & Biases.
+**Inspect WandB** is a Python library for integrating Inspect with Weights & Biases.
