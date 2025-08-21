@@ -7,11 +7,11 @@ from typing import Generator
 from pytest import MonkeyPatch
 import pytest
 from unittest.mock import MagicMock, patch
-from .conftest_weave_client import TEST_ENTITY
+from ..conftest_weave_client import TEST_ENTITY
 
 @pytest.fixture(scope="function")
 def patch_weave_client_in_hooks(client: WeaveClient) -> Generator[WeaveClient, None, None]:
-    with patch("inspect_wandb.hooks.weave_hooks.weave.init", MagicMock(return_value=client)):
+    with patch("inspect_wandb.weave.hooks.weave.init", MagicMock(return_value=client)):
         yield client
 
 
