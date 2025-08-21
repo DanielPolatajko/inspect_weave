@@ -24,7 +24,6 @@ class TestEndToEndInspectRuns:
         monkeypatch.delenv("INSPECT_WANDB_WEAVE_ENABLED")
 
     def test_weave_init_called_on_run_start(self, patched_weave_evaluation_hooks: dict[str, MagicMock], hello_world_eval: Callable[[], Task]) -> None:
-        # Given
         weave_init = patched_weave_evaluation_hooks["weave_init"]
 
         # When

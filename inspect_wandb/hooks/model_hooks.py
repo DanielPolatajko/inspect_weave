@@ -28,6 +28,16 @@ class WandBModelHooks(Hooks):
 
     _correct_samples: int = 0
     _total_samples: int = 0
+    _wandb_initialized: bool = False
+    _hooks_enabled: bool | None = None
+
+    def _check_enable_override(self, data: TaskStart) -> bool|None:
+        """
+        Check TaskStart metadata to determine if hooks should be enabled
+        """
+        if data.spec.metadata is None:
+            return None
+        return data.spec.metadata.get("models_enabled")
 
     @override
     def enabled(self) -> bool:
@@ -38,17 +48,13 @@ class WandBModelHooks(Hooks):
     async def on_run_start(self, data: RunStart) -> None:
         if self.settings is None:
             self.settings = SettingsLoader.load_inspect_wandb_settings().models
-            
-        self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
-
-
-        if self.settings.config:
-            wandb.config.update(self.settings.config)
-
-        _ = self.run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
+        # Note: wandb.init() moved to lazy initialization in on_task_start
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
+        # Only proceed with cleanup if WandB was actually initialized
+        if not self._wandb_initialized:
+            return
         
         try:
             logs = [log.location for log in data.logs]
@@ -66,6 +72,32 @@ class WandBModelHooks(Hooks):
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
+        # Ensure settings are loaded
+        if self.settings is None:
+            logger.info("Loading settings in on_task_start")
+            self.settings = SettingsLoader.load_inspect_wandb_settings().models
+        
+        # Check enablement only on first task (all tasks share same metadata)
+        if self._hooks_enabled is None:
+            script_override = self._check_enable_override(data)
+            # Use task-specific override if present, otherwise fall back to settings
+            self._hooks_enabled = script_override if script_override is not None else self.settings.enabled
+        
+        if not self._hooks_enabled:
+            logger.info(f"WandB model hooks disabled for run (task: {data.spec.task})")
+            return
+        
+        # Lazy initialization: only init WandB when first task starts
+        if not self._wandb_initialized:
+            self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
+
+            if self.settings.config:
+                wandb.config.update(self.settings.config)
+
+            _ = self.run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
+            self._wandb_initialized = True
+            logger.info(f"WandB initialized for task {data.spec.task}")
+        
         inspect_tags = (
             f"inspect_task:{data.spec.task}",
             f"inspect_model:{data.spec.model}",
@@ -78,6 +110,10 @@ class WandBModelHooks(Hooks):
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
+        # Skip if hooks are disabled for this run
+        if not self._hooks_enabled:
+            return
+            
         self._total_samples += 1
         if data.sample.scores:
             self._correct_samples += int(self._is_correct(data.sample))

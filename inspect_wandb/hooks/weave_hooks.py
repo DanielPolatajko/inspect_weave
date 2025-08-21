@@ -23,6 +23,8 @@ class WeaveEvaluationHooks(Hooks):
     weave_eval_loggers: dict[str, CustomEvaluationLogger] = {}
     settings: WeaveSettings | None = None
     sample_calls: dict[str, Call] = {}
+    _weave_initialized: bool = False
+    _hooks_enabled: bool | None = None
 
     @override
     async def on_run_start(self, data: RunStart) -> None:
@@ -30,18 +32,14 @@ class WeaveEvaluationHooks(Hooks):
         if self.settings is None:
             logger.info("Loading settings")
             self.settings = SettingsLoader.load_inspect_wandb_settings().weave
-        
-        self.weave_client = weave.init(
-            project_name=f"{self.settings.entity}/{self.settings.project}",
-            settings=UserSettings(
-                print_call_link=False
-            )
-        )
-        if self.settings.autopatch:
-            get_inspect_patcher(CustomAutopatchSettings().inspect).attempt_patch()
+        # Note: weave.init() moved to lazy initialization in on_task_start
 
     @override
     async def on_run_end(self, data: RunEnd) -> None:
+        # Only proceed with cleanup if Weave was actually initialized
+        if not self._weave_initialized:
+            return
+            
         # Finalize all active loggers
         for weave_eval_logger in self.weave_eval_loggers.values():
             if not weave_eval_logger._is_finalized:
@@ -63,8 +61,44 @@ class WeaveEvaluationHooks(Hooks):
         if self.settings is not None and self.settings.autopatch:
             get_inspect_patcher().undo_patch()
 
+    def _check_enable_override(self, data: TaskStart) -> bool|None:
+        """
+        Check TaskStart metadata to determine if hooks should be enabled
+        """
+        if data.spec.metadata is None:
+            return None
+        return data.spec.metadata.get("weave_enabled")
+
     @override
     async def on_task_start(self, data: TaskStart) -> None:
+        # Ensure settings are loaded
+        if self.settings is None:
+            logger.info("Loading settings in on_task_start")
+            self.settings = SettingsLoader.load_inspect_wandb_settings().weave
+        
+        # Check enablement only on first task (all tasks share same metadata)
+        if self._hooks_enabled is None:
+            script_override = self._check_enable_override(data)
+            # Use task-specific override if present, otherwise fall back to settings
+            self._hooks_enabled = script_override if script_override is not None else self.settings.enabled
+        
+        if not self._hooks_enabled:
+            logger.info(f"Weave hooks disabled for run (task: {data.spec.task})")
+            return
+        
+        # Lazy initialization: only init Weave when first task starts
+        if not self._weave_initialized:
+            self.weave_client = weave.init(
+                project_name=f"{self.settings.entity}/{self.settings.project}",
+                settings=UserSettings(
+                    print_call_link=False
+                )
+            )
+            if self.settings.autopatch:
+                get_inspect_patcher(CustomAutopatchSettings().inspect).attempt_patch()
+            self._weave_initialized = True
+            logger.info(f"Weave initialized for task {data.spec.task}")
+        
         model_name = format_model_name(data.spec.model) 
         weave_eval_logger = CustomEvaluationLogger(
             name=data.spec.task,
@@ -81,6 +115,10 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_task_end(self, data: TaskEnd) -> None:
+        # Skip if hooks are disabled for this run
+        if not self._hooks_enabled:
+            return
+            
         weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
         assert weave_eval_logger is not None
         
@@ -96,6 +134,10 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_sample_start(self, data: SampleStart) -> None:
+        # Skip if hooks are disabled for this run
+        if not self._hooks_enabled:
+            return
+        
         if self.settings is not None and self.settings.autopatch:
             self.sample_calls[data.sample_id] = self.weave_client.create_call(
                 op="inspect-sample",
@@ -106,6 +148,10 @@ class WeaveEvaluationHooks(Hooks):
 
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
+        # Skip if hooks are disabled for this run
+        if not self._hooks_enabled:
+            return
+            
         weave_eval_logger = self.weave_eval_loggers.get(data.eval_id)
         assert weave_eval_logger is not None
         
