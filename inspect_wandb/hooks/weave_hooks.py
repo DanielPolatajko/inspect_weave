@@ -142,7 +142,7 @@ class WeaveEvaluationHooks(Hooks):
             self.sample_calls[data.sample_id] = self.weave_client.create_call(
                 op="inspect-sample",
                 inputs={"input": data.summary.input},
-                attributes={"sample_id": data.sample_id, "epoch": data.summary.epoch},
+                attributes={"sample_id": data.summary.id, "sample_uuid": data.sample_id, "epoch": data.summary.epoch},
                 display_name="inspect-sample"
             )
 
