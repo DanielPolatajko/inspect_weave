@@ -1,3 +1,4 @@
+import os
 from typing import Callable
 from unittest.mock import MagicMock
 from pytest import MonkeyPatch
@@ -23,8 +24,11 @@ class TestEndToEndInspectRuns:
         # Cleanup
         monkeypatch.delenv("INSPECT_WEAVE_WEAVE_ENABLED")
 
-    def test_weave_init_called_on_run_start(self, patched_weave_evaluation_hooks: dict[str, MagicMock], hello_world_eval: Callable[[], Task]) -> None:
-        # Given
+    def test_weave_init_called_on_run_start(self, patched_weave_evaluation_hooks: dict[str, MagicMock], hello_world_eval: Callable[[], Task], monkeypatch: MonkeyPatch) -> None:
+        # Given - Ensure weave is enabled (clean any previous env vars)
+        if "INSPECT_WEAVE_WEAVE_ENABLED" in os.environ:
+            monkeypatch.delenv("INSPECT_WEAVE_WEAVE_ENABLED")
+            
         weave_init = patched_weave_evaluation_hooks["weave_init"]
 
         # When
