@@ -1,8 +1,9 @@
 {
+    "version": "0.2.0",
     "configurations": [
 
         {
-            "name": "Python Debugger: Inspect",
+            "name": "Debug Inspect",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/inspect_wandb_venv_test/bin/inspect", // Replace inspect_weave_venv with your venv
@@ -20,11 +21,13 @@
             }
         },
         {
-            "name": "Python Debugger: Run Current File",
-            "type": "debugpy",
+            "name": "Python: Current File",
+            "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-        }
+            "justMyCode": false,
+            "cwd": "${fileDirname}",
+        },
     ]
 }
