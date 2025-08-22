@@ -4,7 +4,7 @@ from inspect_ai.hooks import SampleEnd, TaskEnd, RunEnd, TaskStart, SampleStart
 from inspect_ai.model import ChatCompletionChoice, ModelOutput, ChatMessageAssistant
 from inspect_ai.log import EvalSample, EvalResults, EvalScore, EvalMetric, EvalSpec, EvalConfig, EvalDataset, EvalSampleSummary
 from inspect_ai._eval.eval import EvalLogs
-from inspect_wandb.hooks import WeaveEvaluationHooks
+from inspect_wandb.weave.hooks import WeaveEvaluationHooks
 from inspect_ai.scorer import Score
 import pytest
 from datetime import datetime

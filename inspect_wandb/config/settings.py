@@ -23,6 +23,7 @@ class ModelsSettings(BaseSettings):
     entity: str = Field(alias="WANDB_ENTITY", description="Entity to write to for the Models integration")
     config: dict[str, Any] | None = Field(default=None, description="Configuration to pass directly to wandb.config for the Models integration")
     files: list[str] | None = Field(default=None, description="Files to upload to the models run. Paths should be relative to the wandb directory.")
+    viz: bool = Field(default=False, description="Whether to enable the inspect_viz extra")
 
     @classmethod
     def settings_customise_sources(

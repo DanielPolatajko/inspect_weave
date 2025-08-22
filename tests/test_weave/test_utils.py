@@ -1,4 +1,4 @@
-from inspect_wandb.hooks.utils import format_model_name, format_score_types
+from inspect_wandb.weave.utils import format_model_name, format_score_types
 import pytest
 import re
 

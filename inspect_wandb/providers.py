@@ -1,9 +1,13 @@
 from inspect_ai.hooks import hooks
-from inspect_wandb.hooks import WeaveEvaluationHooks, WandBModelHooks
+from inspect_wandb.config.extras_manager import INSTALLED_EXTRAS
+from inspect_wandb.models import WandBModelHooks
 
-@hooks(name="weave_evaluation_hooks", description="Weave evaluation integration")
-def weave_evaluation_hooks():
-    return WeaveEvaluationHooks
+if INSTALLED_EXTRAS["weave"]:
+    from inspect_wandb.weave import WeaveEvaluationHooks
+
+    @hooks(name="weave_evaluation_hooks", description="Weave evaluation integration")
+    def weave_evaluation_hooks():
+        return WeaveEvaluationHooks
 
 @hooks(name="wandb_models_hooks", description="Weights & Biases model integration")
 def wandb_models_hooks():

@@ -2,12 +2,12 @@ from typing import Any
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, SampleStart, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
-from inspect_wandb.hooks.utils import format_model_name, format_score_types
+from inspect_wandb.weave.utils import format_model_name, format_score_types
 from inspect_wandb.config.settings_loader import SettingsLoader
 from inspect_wandb.config.settings import WeaveSettings
 from logging import getLogger
-from inspect_wandb.weave_custom_overrides.autopatcher import get_inspect_patcher, CustomAutopatchSettings
-from inspect_wandb.weave_custom_overrides.custom_evaluation_logger import CustomEvaluationLogger
+from inspect_wandb.weave.autopatcher import get_inspect_patcher, CustomAutopatchSettings
+from inspect_wandb.weave.custom_evaluation_logger import CustomEvaluationLogger
 from inspect_wandb.exceptions import WeaveEvaluationException
 from weave.trace.weave_client import Call
 from weave.trace.context import call_context
