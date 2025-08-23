@@ -1276,7 +1276,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "pydantic-settings" },
     { name = "wandb" },
-    { name = "weave", marker = "extra == 'weave'", specifier = ">=0.52.1" },
+    { name = "weave", marker = "extra == 'weave'", specifier = "==0.52.1" },
 ]
 provides-extras = ["weave", "viz"]
 

@@ -196,6 +196,10 @@ class TestWeaveEvaluationHooks:
         hooks._hooks_enabled = True  # Enable hooks for this test
         hooks._weave_initialized = True  # Mark as initialized for cleanup
         hooks.weave_client = MagicMock(spec=WeaveClient)
+        
+        # Set up task mapping (simulating task start)
+        hooks.task_mapping["test_eval_id"] = "test_task"
+        
         sample = SampleStart(
             run_id="test_run_id",
             eval_id="test_eval_id",
@@ -216,8 +220,15 @@ class TestWeaveEvaluationHooks:
         hooks.weave_client.create_call.assert_called_once_with(
             op="inspect-sample",
             inputs={"input": "test_input"},
-            attributes={"sample_id": 1, "sample_uuid": "test_sample_id", "epoch": 1},
-            display_name="inspect-sample"
+            attributes={
+                "sample_id": 1, 
+                "sample_uuid": "test_sample_id", 
+                "epoch": 1,
+                "task_name": "test_task",
+                "task_id": "test_eval_id",
+                "metadata": {}
+            },
+            display_name="test_task-sample-1-epoch-1"
         )
 
 
