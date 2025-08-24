@@ -120,6 +120,7 @@ class TestWeaveEvaluationHooks:
         )
 
         mock_weave_eval_logger = MagicMock(spec=EvaluationLogger)
+        mock_weave_eval_logger._evaluate_call = MagicMock(spec=Call)
         hooks.weave_eval_loggers["test_eval_id"] = mock_weave_eval_logger
 
         # When
@@ -217,7 +218,7 @@ class TestWeaveEnablementPriority:
         """Test _check_enable_override returns True when metadata has weave_enabled: true"""
         # Given
         hooks = WeaveEvaluationHooks()
-        task_start = create_task_start(metadata={"weave_enabled": True})
+        task_start = create_task_start({"weave_enabled": True})
         
         # When
         result = hooks._check_enable_override(task_start)
@@ -229,7 +230,7 @@ class TestWeaveEnablementPriority:
         """Test _check_enable_override returns False when metadata has weave_enabled: false"""
         # Given
         hooks = WeaveEvaluationHooks()
-        task_start = create_task_start(metadata={"weave_enabled": False})
+        task_start = create_task_start({"weave_enabled": False})
         
         # When
         result = hooks._check_enable_override(task_start)
@@ -241,7 +242,7 @@ class TestWeaveEnablementPriority:
         """Test _check_enable_override returns None when metadata exists but no weave_enabled key"""
         # Given 
         hooks = WeaveEvaluationHooks()
-        task_start = create_task_start(metadata={"other_key": "value"})
+        task_start = create_task_start({"other_key": "value"})
         
         # When
         result = hooks._check_enable_override(task_start)
@@ -253,7 +254,7 @@ class TestWeaveEnablementPriority:
         """Test _check_enable_override returns None when metadata is None"""
         # Given
         hooks = WeaveEvaluationHooks()
-        task_start = create_task_start(metadata=None)
+        task_start = create_task_start(None)
         
         # When
         result = hooks._check_enable_override(task_start)
@@ -268,7 +269,7 @@ class TestWeaveEnablementPriority:
         test_settings.enabled = False  # Project config says disabled
         hooks = WeaveEvaluationHooks()
         hooks.settings = test_settings
-        task_start = create_task_start(metadata={"weave_enabled": True})  # Script says enabled
+        task_start = create_task_start({"weave_enabled": True})  # Script says enabled
         
         # Test just the enablement logic by directly checking what would be set
         script_override = hooks._check_enable_override(task_start)
@@ -285,7 +286,7 @@ class TestWeaveEnablementPriority:
         test_settings.enabled = True  # Project config says enabled
         hooks = WeaveEvaluationHooks()
         hooks.settings = test_settings
-        task_start = create_task_start(metadata={"weave_enabled": False})  # Script says disabled
+        task_start = create_task_start({"weave_enabled": False})  # Script says disabled
         
         # When
         await hooks.on_task_start(task_start)
@@ -300,7 +301,7 @@ class TestWeaveEnablementPriority:
         test_settings.enabled = True  # Project config says enabled
         hooks = WeaveEvaluationHooks()
         hooks.settings = test_settings
-        task_start = create_task_start(metadata=None)  # No script metadata
+        task_start = create_task_start(None)  # No script metadata
         
         # Test just the enablement logic by directly checking what would be set
         script_override = hooks._check_enable_override(task_start)
