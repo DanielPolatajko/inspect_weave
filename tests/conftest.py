@@ -15,7 +15,7 @@ from pytest import TempPathFactory
 from inspect_ai._util.registry import registry_find
 from weave.evaluation.eval_imperative import EvaluationLogger
 from inspect_ai.hooks import TaskStart
-from inspect_ai.log import EvalSpec, EvalConfig, EvalDataset
+from inspect_ai.log import EvalSpec, EvalConfig, EvalDataset, EvalLog, EvalResults, EvalScore, EvalMetric
 from datetime import datetime
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -183,5 +183,29 @@ def create_task_start() -> Callable[[dict | None], TaskStart]:
             )
         )
     return _create_task_start
+
+@pytest.fixture(scope="function")
+def task_end_eval_log() -> EvalLog:
+    return EvalLog(
+        eval=EvalSpec(
+            run_id="test_run_id",
+            task_id="test_task_id",
+            created=datetime.now().isoformat(),
+            task="test_task",
+            dataset=EvalDataset(),
+            model="mockllm/model",
+            config=EvalConfig()
+        ),
+        results=EvalResults(
+            total_samples=1,
+            scores=[
+                EvalScore(
+                    name="test_score",
+                    scorer="test_scorer",
+                    metrics={"test_metric": EvalMetric(name="test_metric", value=1.0)}
+                )
+            ]
+        )
+    )
 
 

@@ -28,6 +28,11 @@ class WeaveEvaluationHooks(Hooks):
     _hooks_enabled: bool | None = None
 
     @override
+    def enabled(self) -> bool:
+        self.settings = self.settings or SettingsLoader.load_inspect_wandb_settings().weave
+        return self.settings.enabled
+
+    @override
     async def on_run_start(self, data: RunStart) -> None:
         # Ensure settings are loaded (in case enabled() wasn't called first)
         if self.settings is None:
@@ -62,14 +67,6 @@ class WeaveEvaluationHooks(Hooks):
         self.weave_client.finish(use_progress_bar=False)
         if self.settings is not None and self.settings.autopatch:
             get_inspect_patcher().undo_patch()
-
-    def _check_enable_override(self, data: TaskStart) -> bool|None:
-        """
-        Check TaskStart metadata to determine if hooks should be enabled
-        """
-        if data.spec.metadata is None:
-            return None
-        return data.spec.metadata.get("weave_enabled")
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
@@ -136,6 +133,11 @@ class WeaveEvaluationHooks(Hooks):
                     for metric_name, metric in score.metrics.items():
                         summary[scorer_name][metric_name] = metric.value
         weave_eval_logger.log_summary(summary)
+
+        if data.log.eval.metadata is None and weave_eval_logger._evaluate_call is not None:
+            data.log.eval.metadata = {"weave_run_url": weave_eval_logger._evaluate_call.ui_url}
+        elif data.log.eval.metadata is not None and weave_eval_logger._evaluate_call is not None:
+            data.log.eval.metadata["weave_run_url"] = weave_eval_logger._evaluate_call.ui_url
 
     @override
     async def on_sample_start(self, data: SampleStart) -> None:
@@ -244,10 +246,13 @@ class WeaveEvaluationHooks(Hooks):
             )
             self.sample_calls.pop(data.sample_id)
 
-    @override
-    def enabled(self) -> bool:
-        self.settings = self.settings or SettingsLoader.load_inspect_wandb_settings().weave
-        return self.settings.enabled
+    def _check_enable_override(self, data: TaskStart) -> bool|None:
+        """
+        Check TaskStart metadata to determine if hooks should be enabled
+        """
+        if data.spec.metadata is None:
+            return None
+        return data.spec.metadata.get("weave_enabled")
 
     def _get_eval_metadata(self, data: TaskStart) -> dict[str, str | dict[str, Any]]:
 

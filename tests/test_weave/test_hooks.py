@@ -2,40 +2,15 @@ from inspect_ai.log import EvalLog
 from unittest.mock import MagicMock
 from inspect_ai.hooks import SampleEnd, TaskEnd, RunEnd, TaskStart, SampleStart
 from inspect_ai.model import ChatCompletionChoice, ModelOutput, ChatMessageAssistant
-from inspect_ai.log import EvalSample, EvalResults, EvalScore, EvalMetric, EvalSpec, EvalConfig, EvalDataset, EvalSampleSummary
+from inspect_ai.log import EvalSample,EvalSampleSummary
 from inspect_ai._eval.eval import EvalLogs
 from inspect_wandb.weave.hooks import WeaveEvaluationHooks
 from inspect_ai.scorer import Score
 import pytest
-from datetime import datetime
 from weave.evaluation.eval_imperative import ScoreLogger, EvaluationLogger
 from inspect_wandb.config.settings import WeaveSettings
-from weave.trace.weave_client import WeaveClient
+from weave.trace.weave_client import WeaveClient, Call
 from typing import Callable
-
-@pytest.fixture(scope="function")
-def task_end_eval_log() -> EvalLog:
-    return EvalLog(
-        eval=EvalSpec(
-            run_id="test_run_id",
-            task_id="test_task_id",
-            created=datetime.now().isoformat(),
-            task="test_task",
-            dataset=EvalDataset(),
-            model="mockllm/model",
-            config=EvalConfig()
-        ),
-        results=EvalResults(
-            total_samples=1,
-            scores=[
-                EvalScore(
-                    name="test_score",
-                    scorer="test_scorer",
-                    metrics={"test_metric": EvalMetric(name="test_metric", value=1.0)}
-                )
-            ]
-        )
-    )
 
 @pytest.fixture(scope="function")
 def test_settings() -> WeaveSettings:
@@ -351,3 +326,25 @@ class TestWeaveEnablementPriority:
         # Then
         assert expected_enabled is False  # Should use settings.enabled
         assert script_override is None  # Verify no override was found
+
+    @pytest.mark.asyncio
+    async def test_weave_run_url_added_to_eval_metadata(self, test_settings: WeaveSettings, task_end_eval_log: EvalLog) -> None:
+        """Test weave_run_url is added to eval metadata"""
+        # Given
+        hooks = WeaveEvaluationHooks()
+        hooks.settings = test_settings
+        hooks._hooks_enabled = True  # Enable hooks for this test
+        hooks._weave_initialized = True  # Mark as initialized for cleanup
+        hooks.weave_eval_loggers["test_eval_id"] = MagicMock(spec=EvaluationLogger)
+        hooks.weave_eval_loggers["test_eval_id"]._evaluate_call = MagicMock(spec=Call)
+        hooks.weave_eval_loggers["test_eval_id"]._evaluate_call.ui_url = "test_url"
+        
+        # When
+        await hooks.on_task_end(TaskEnd(
+            run_id="test_run_id",
+            eval_id="test_eval_id",
+            log=task_end_eval_log
+        ))
+
+        # Then
+        assert task_end_eval_log.eval.metadata["weave_run_url"] == "test_url"

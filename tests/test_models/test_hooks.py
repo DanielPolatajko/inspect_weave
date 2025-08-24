@@ -6,8 +6,8 @@ from wandb.sdk.wandb_run import Run
 from wandb.sdk.wandb_config import Config
 from wandb.sdk.wandb_summary import Summary
 from typing import Callable
-from inspect_ai.hooks import TaskStart, SampleEnd, RunEnd
-from inspect_ai.log import EvalSample
+from inspect_ai.hooks import TaskStart, SampleEnd, RunEnd, TaskEnd
+from inspect_ai.log import EvalSample, EvalLog
 from inspect_ai.scorer import Score 
 from inspect_wandb.models.hooks import Metric
 
@@ -193,4 +193,29 @@ class TestWandBModelHooks:
         # Then
         hooks.run.save.assert_called_once_with("test-file.txt", policy="now")
 
-    
+    @pytest.mark.asyncio
+    async def test_wandb_run_url_added_to_eval_metadata(self, mock_wandb_run: Run, task_end_eval_log: EvalLog) -> None:
+        """Test wandb_run_url is added to eval metadata"""
+        # Given
+        hooks = WandBModelHooks()
+        hooks.run = mock_wandb_run
+        hooks.settings = ModelsSettings(
+            enabled=True, 
+            entity="test-entity", 
+            project="test-project"
+        )
+        hooks._hooks_enabled = True
+        hooks._wandb_initialized = True
+        hooks.run.url = "test_url"
+
+        # When
+        await hooks.on_task_end(
+            TaskEnd(
+                run_id="test_run_id",
+                eval_id="test_eval_id",
+                log=task_end_eval_log
+            )
+        )
+
+        # Then
+        assert task_end_eval_log.eval.metadata["wandb_run_url"] == "test_url"
