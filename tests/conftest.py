@@ -14,7 +14,9 @@ from inspect_wandb.providers import weave_evaluation_hooks
 from pytest import TempPathFactory
 from inspect_ai._util.registry import registry_find
 from weave.evaluation.eval_imperative import EvaluationLogger
-
+from inspect_ai.hooks import TaskStart
+from inspect_ai.log import EvalSpec, EvalConfig, EvalDataset
+from datetime import datetime
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -158,5 +160,28 @@ def error_eval() -> Callable[[], Task]:
         )
 
     return hello_world_with_error
+
+
+### Inspect Hooks DTOs
+
+@pytest.fixture(scope="function")
+def create_task_start() -> Callable[[dict | None], TaskStart]:
+    """Helper to create TaskStart with optional metadata"""
+    def _create_task_start(metadata: dict | None = None) -> TaskStart:
+        return TaskStart(
+            run_id="test_run_id",
+            eval_id="test_eval_id",
+            spec=EvalSpec(
+                run_id="test_run_id",
+                task_id="test_task_id", 
+                created=datetime.now().isoformat(),
+                task="test_task",
+                dataset=EvalDataset(name="test-dataset"),
+                model="mockllm/model",
+                config=EvalConfig(),
+                metadata=metadata
+            )
+        )
+    return _create_task_start
 
 

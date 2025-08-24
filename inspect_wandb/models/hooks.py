@@ -63,13 +63,15 @@ class WandBModelHooks(Hooks):
         if not self._wandb_initialized:
             return
 
+        self._log_summary(data)
+
         if self.settings is not None and self.settings.viz and self.viz_writer is not None:
             await self.viz_writer.log_scores_heatmap(data, self.run)
 
         if self.settings is not None and self.settings.files:
             for file in self.settings.files:
-                 wandb.save(str(file), policy="now")  # TODO: fix wandb Symlinked warning for folder upload
-        wandb.finish()
+                 self.run.save(str(file), policy="now")  # TODO: fix wandb Symlinked warning for folder upload
+        self.run.finish()
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
@@ -92,7 +94,7 @@ class WandBModelHooks(Hooks):
             self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 
             if self.settings.config:
-                wandb.config.update(self.settings.config)
+                self.run.config.update(self.settings.config)
 
             _ = self.run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
             self._wandb_initialized = True
@@ -117,7 +119,7 @@ class WandBModelHooks(Hooks):
         self._total_samples += 1
         if data.sample.scores:
             self._correct_samples += int(self._is_correct(data.sample))
-            wandb.log(
+            self.run.log(
                 {Metric.SAMPLES: self._total_samples, Metric.ACCURACY: self._accuracy()}
             )
 
@@ -128,7 +130,7 @@ class WandBModelHooks(Hooks):
             "accuracy": self._accuracy(),
             "logs": [log.location for log in data.logs],
         }
-        wandb.summary.update(summary)
+        self.run.summary.update(summary)
         logger.info(f"WandB Summary: {summary}")
 
     def _is_correct(self, sample: EvalSample) -> bool:
