@@ -2,7 +2,7 @@ import logging
 from typing_extensions import override
 
 import wandb
-from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart
+from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, TaskStart, TaskEnd
 from inspect_ai.log import EvalSample
 from inspect_ai.scorer import CORRECT
 from inspect_wandb.config.settings_loader import SettingsLoader
@@ -32,20 +32,6 @@ class WandBModelHooks(Hooks):
         else:
             self.viz_writer = None
 
-    def _check_enable_override(self, data: TaskStart) -> bool|None:
-        """
-        Check TaskStart metadata to determine if hooks should be enabled
-        """
-        if data.spec.metadata is None:
-            return None
-        return data.spec.metadata.get("models_enabled")
-
-    def _load_settings(self) -> None:
-        if self.settings is None:
-            self.settings = SettingsLoader.load_inspect_wandb_settings(
-                {"weave": {}, "models": {"viz": self.viz_writer is not None}}
-            ).models
-
     @override
     def enabled(self) -> bool:
         self._load_settings()
@@ -56,20 +42,23 @@ class WandBModelHooks(Hooks):
     async def on_run_start(self, data: RunStart) -> None:
         self._load_settings()
         # Note: wandb.init() moved to lazy initialization in on_task_start
-
+    
     @override
     async def on_run_end(self, data: RunEnd) -> None:
         # Only proceed with cleanup if WandB was actually initialized
         if not self._wandb_initialized:
             return
 
+        self._log_summary(data)
+
         if self.settings is not None and self.settings.viz and self.viz_writer is not None:
             await self.viz_writer.log_scores_heatmap(data, self.run)
 
         if self.settings is not None and self.settings.files:
             for file in self.settings.files:
-                 wandb.save(str(file), policy="now")  # TODO: fix wandb Symlinked warning for folder upload
-        wandb.finish()
+                 self.run.save(str(file), policy="now")  # TODO: fix wandb Symlinked warning for folder upload
+
+        self.run.finish()
 
     @override
     async def on_task_start(self, data: TaskStart) -> None:
@@ -92,7 +81,7 @@ class WandBModelHooks(Hooks):
             self.run = wandb.init(id=data.run_id, entity=self.settings.entity, project=self.settings.project) 
 
             if self.settings.config:
-                wandb.config.update(self.settings.config)
+                self.run.config.update(self.settings.config)
 
             _ = self.run.define_metric(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
             self._wandb_initialized = True
@@ -108,6 +97,14 @@ class WandBModelHooks(Hooks):
         else:
             self.run.tags = inspect_tags
 
+    
+    @override
+    async def on_task_end(self, data: TaskEnd) -> None:
+        if data.log.eval.metadata is None:
+            data.log.eval.metadata = {"wandb_run_url": self.run.url}
+        else:
+            data.log.eval.metadata["wandb_run_url"] = self.run.url
+
     @override
     async def on_sample_end(self, data: SampleEnd) -> None:
         # Skip if hooks are disabled for this run
@@ -117,7 +114,7 @@ class WandBModelHooks(Hooks):
         self._total_samples += 1
         if data.sample.scores:
             self._correct_samples += int(self._is_correct(data.sample))
-            wandb.log(
+            self.run.log(
                 {Metric.SAMPLES: self._total_samples, Metric.ACCURACY: self._accuracy()}
             )
 
@@ -128,7 +125,7 @@ class WandBModelHooks(Hooks):
             "accuracy": self._accuracy(),
             "logs": [log.location for log in data.logs],
         }
-        wandb.summary.update(summary)
+        self.run.summary.update(summary)
         logger.info(f"WandB Summary: {summary}")
 
     def _is_correct(self, sample: EvalSample) -> bool:
@@ -143,3 +140,17 @@ class WandBModelHooks(Hooks):
             return 0.0
 
         return self._correct_samples * 1.0 / self._total_samples
+
+    def _check_enable_override(self, data: TaskStart) -> bool|None:
+        """
+        Check TaskStart metadata to determine if hooks should be enabled
+        """
+        if data.spec.metadata is None:
+            return None
+        return data.spec.metadata.get("models_enabled")
+
+    def _load_settings(self) -> None:
+        if self.settings is None:
+            self.settings = SettingsLoader.load_inspect_wandb_settings(
+                {"weave": {}, "models": {"viz": self.viz_writer is not None}}
+            ).models

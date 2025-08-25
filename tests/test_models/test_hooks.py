@@ -1,6 +1,28 @@
 from inspect_wandb.models.hooks import WandBModelHooks
 from inspect_wandb.config.settings import ModelsSettings
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+import pytest
+from wandb.sdk.wandb_run import Run
+from wandb.sdk.wandb_config import Config
+from wandb.sdk.wandb_summary import Summary
+from typing import Callable
+from inspect_ai.hooks import TaskStart, SampleEnd, RunEnd, TaskEnd
+from inspect_ai.log import EvalSample, EvalLog
+from inspect_ai.scorer import Score 
+from inspect_wandb.models.hooks import Metric
+
+@pytest.fixture(scope="function")
+def mock_wandb_run() -> Run:
+    mock_run = MagicMock(spec=Run)
+    mock_run.config = MagicMock(spec=Config)
+    mock_run.config.update = MagicMock()
+    mock_run.define_metric = MagicMock()
+    mock_run.tags = []
+    mock_run.summary = MagicMock(spec=Summary)
+    mock_run.summary.update = MagicMock()
+    mock_run.save = MagicMock()
+    mock_run.finish = MagicMock()
+    return mock_run
 
 class TestWandBModelHooks:
     """
@@ -30,4 +52,170 @@ class TestWandBModelHooks:
             hooks = WandBModelHooks()
             assert not hooks.enabled()
 
-    
+    @pytest.mark.asyncio
+    async def test_wandb_initialised_on_task_start(self, mock_wandb_run: Run, create_task_start: Callable[dict | None, TaskStart]) -> None:
+        """
+        Test that the on_task_start method initializes the WandB run.
+        """
+        hooks = WandBModelHooks()
+        mock_init = MagicMock(return_value=mock_wandb_run)
+        task_start = create_task_start()
+        with patch('inspect_wandb.models.hooks.wandb.init', mock_init):
+            await hooks.on_task_start(task_start)
+
+            mock_init.assert_called_once_with(id="test_run_id", entity="test-entity", project="test-project")
+            assert hooks._wandb_initialized is True
+            assert hooks.run is mock_wandb_run
+            hooks.run.config.update.assert_not_called()
+            hooks.run.define_metric.assert_called_once_with(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
+            assert hooks.run.tags == ("inspect_task:test_task", "inspect_model:mockllm/model", "inspect_dataset:test-dataset")
+
+    @pytest.mark.asyncio
+    async def test_wandb_config_updated_on_task_start_if_settings_config_is_set(self, mock_wandb_run: Run, create_task_start: Callable[dict | None, TaskStart]) -> None:
+        """
+        Test that the on_task_start method initializes the WandB run with config.
+        """
+        hooks = WandBModelHooks()
+        mock_init = MagicMock(return_value=mock_wandb_run)
+        task_start = create_task_start()
+        hooks.settings = ModelsSettings(
+            enabled=True, 
+            entity="test-entity", 
+            project="test-project",
+            config={"test": "test"}
+        )
+        with patch('inspect_wandb.models.hooks.wandb.init', mock_init):
+            await hooks.on_task_start(task_start)
+
+            mock_init.assert_called_once_with(id="test_run_id", entity="test-entity", project="test-project")
+            assert hooks._wandb_initialized is True
+            assert hooks.run is mock_wandb_run
+            hooks.run.config.update.assert_called_once_with({"test": "test"})
+            hooks.run.define_metric.assert_called_once_with(step_metric=Metric.SAMPLES, name=Metric.ACCURACY)
+            assert hooks.run.tags == ("inspect_task:test_task", "inspect_model:mockllm/model", "inspect_dataset:test-dataset")
+
+    @pytest.mark.asyncio
+    async def test_accuracy_and_samples_logged_on_sample_end(self, mock_wandb_run: Run) -> None:
+        """
+        Test that the on_sample_end method logs the accuracy and samples.
+        """
+        # Given
+        hooks = WandBModelHooks()
+        hooks.run = mock_wandb_run
+        hooks.settings = ModelsSettings(
+            enabled=True, 
+            entity="test-entity", 
+            project="test-project"
+        )
+        hooks._total_samples = 9
+        hooks._correct_samples = 4
+        hooks._hooks_enabled = True
+
+        # When
+        await hooks.on_sample_end(
+            SampleEnd(
+                run_id="test-run-id",
+                eval_id="test-eval-id",
+                sample_id="test-sample-id",
+                sample=EvalSample(
+                    id="test-sample-id",
+                    epoch=1,
+                    scores={"score": Score(value=True)},
+                    input="test-input",
+                    target="test-target"
+                )
+            )
+        )
+
+        # Then
+        hooks.run.log.assert_called_once_with({Metric.SAMPLES: 10, Metric.ACCURACY: 0.5})
+        assert hooks._total_samples == 10
+        assert hooks._correct_samples == 5
+
+    @pytest.mark.asyncio
+    async def test_summary_logged_on_run_end(self, mock_wandb_run: Run) -> None:
+        # Given
+        hooks = WandBModelHooks()
+        hooks.run = mock_wandb_run
+        hooks.settings = ModelsSettings(
+            enabled=True, 
+            entity="test-entity", 
+            project="test-project"
+        )
+        hooks._total_samples = 10
+        hooks._correct_samples = 5
+        hooks._hooks_enabled = True
+        hooks._wandb_initialized = True
+
+        # When
+        await hooks.on_run_end(
+            RunEnd(
+                run_id="test-run",
+                exception=None,
+                logs=[]
+            )
+        )
+
+        # Then
+        hooks.run.summary.update.assert_called_once_with({
+            "samples_total": 10,
+            "samples_correct": 5,
+            "accuracy": 0.5,
+            "logs": []
+        })
+
+    @pytest.mark.asyncio
+    async def test_files_saved_on_run_end(self, mock_wandb_run: Run) -> None:
+        # Given
+        hooks = WandBModelHooks()
+        hooks.run = mock_wandb_run
+        hooks.settings = ModelsSettings(
+            enabled=True, 
+            entity="test-entity", 
+            project="test-project",
+            files=["test-file.txt"]
+        )
+        hooks._total_samples = 10
+        hooks._correct_samples = 5
+        hooks._hooks_enabled = True
+        hooks._wandb_initialized = True
+        hooks._hooks_enabled = True
+
+        # When
+        await hooks.on_run_end(
+            RunEnd(
+                run_id="test-run",
+                exception=None,
+                logs=[]
+            )
+        )
+
+        # Then
+        hooks.run.save.assert_called_once_with("test-file.txt", policy="now")
+
+    @pytest.mark.asyncio
+    async def test_wandb_run_url_added_to_eval_metadata(self, mock_wandb_run: Run, task_end_eval_log: EvalLog) -> None:
+        """Test wandb_run_url is added to eval metadata"""
+        # Given
+        hooks = WandBModelHooks()
+        hooks.run = mock_wandb_run
+        hooks.settings = ModelsSettings(
+            enabled=True, 
+            entity="test-entity", 
+            project="test-project"
+        )
+        hooks._hooks_enabled = True
+        hooks._wandb_initialized = True
+        hooks.run.url = "test_url"
+
+        # When
+        await hooks.on_task_end(
+            TaskEnd(
+                run_id="test_run_id",
+                eval_id="test_eval_id",
+                log=task_end_eval_log
+            )
+        )
+
+        # Then
+        assert task_end_eval_log.eval.metadata["wandb_run_url"] == "test_url"
