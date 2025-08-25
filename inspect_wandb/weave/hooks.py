@@ -158,7 +158,7 @@ class WeaveEvaluationHooks(Hooks):
                     "task_id": data.eval_id,
                     "metadata": data.summary.metadata,
                 },
-                display_name=format_sample_display_name(self.settings.sample_display_name_template, task_name, data.summary.id, data.summary.epoch)
+                display_name=format_sample_display_name(self.settings.sample_name_template, task_name, data.summary.id, data.summary.epoch)
             )
 
     @override

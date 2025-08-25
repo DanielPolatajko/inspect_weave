@@ -113,7 +113,7 @@ For advanced users who want to customize the behavior, you can add a `[tool.insp
 ```toml
 [tool.inspect-wandb.weave]
 enabled = true  # Enable/disable Weave integration (default: true)
-sample_display_name_template = "{task_name}_s{sample_id}_e{epoch}"  # Customize sample names in Weave traces (default: "{task_name}-sample-{sample_id}-epoch-{epoch}")
+sample_name_template = "{task_name}_s{sample_id}_e{epoch}"  # Customize sample names in Weave traces (default: "{task_name}-sample-{sample_id}-epoch-{epoch}")
 
 [tool.inspect-wandb.models]
 enabled = false  # Enable/disable Models integration (default: true)
@@ -153,7 +153,7 @@ When using the Weave integration with autopatching enabled, you can customize ho
 
 **Environment Variable (Recommended)**
 ```bash
-export SAMPLE_NAME_TEMPLATE="{task_name}_s{sample_id}_e{epoch}"
+export INSPECT_WANDB_WEAVE_SAMPLE_NAME_TEMPLATE="{task_name}_s{sample_id}_e{epoch}"
 ```
 
 **Available Variables:**
@@ -164,20 +164,26 @@ export SAMPLE_NAME_TEMPLATE="{task_name}_s{sample_id}_e{epoch}"
 **Examples:**
 ```bash
 # Compact format
-export SAMPLE_NAME_TEMPLATE="{task_name}_s{sample_id}"
+export INSPECT_WANDB_WEAVE_SAMPLE_NAME_TEMPLATE="{task_name}_s{sample_id}"
 # Result: "my_task_s1", "my_task_s2", ...
 
 # Descriptive format
-export SAMPLE_NAME_TEMPLATE="Task: {task_name} | Sample {sample_id}"
+export INSPECT_WANDB_WEAVE_SAMPLE_NAME_TEMPLATE="Task: {task_name} | Sample {sample_id}"
 # Result: "Task: my_task | Sample 1", "Task: my_task | Sample 2", ...
 
 # Epoch-focused format
-export SAMPLE_NAME_TEMPLATE="{task_name}-epoch{epoch}-{sample_id}"
+export INSPECT_WANDB_WEAVE_SAMPLE_NAME_TEMPLATE="{task_name}-epoch{epoch}-{sample_id}"
 # Result: "my_task-epoch1-1", "my_task-epoch1-2", ...
 ```
 
-**Default Format:**
 If no custom template is provided, sample traces will use the format: `"{task_name}-sample-{sample_id}-epoch-{epoch}"` (e.g., "my_task-sample-1-epoch-1").
+
+This name can be configured with the `sample_name_template` parameter e.g.
+
+```toml
+[tool.inspect-wandb.weave]
+sample_name_template = "{task_name}_s{sample_id}"
+```
 
 ### Running Inspect with the integration
 
