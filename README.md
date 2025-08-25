@@ -113,6 +113,7 @@ For advanced users who want to customize the behavior, you can add a `[tool.insp
 ```toml
 [tool.inspect-wandb.weave]
 enabled = true  # Enable/disable Weave integration (default: true)
+sample_display_name_template = "{task_name}_s{sample_id}_e{epoch}"  # Customize sample names in Weave traces (default: "{task_name}-sample-{sample_id}-epoch-{epoch}")
 
 [tool.inspect-wandb.models]
 enabled = false  # Enable/disable Models integration (default: true)
@@ -145,6 +146,38 @@ autopatch = true
 ```
 
 or by setting the environment variable `INSPECT_WANDB_WEAVE_AUTOPATCH=true`.
+
+#### Sample Display Name Customization
+
+When using the Weave integration with autopatching enabled, you can customize how sample traces are named in the Weave dashboard. This helps organize and identify traces according to your preferences.
+
+**Environment Variable (Recommended)**
+```bash
+export SAMPLE_NAME_TEMPLATE="{task_name}_s{sample_id}_e{epoch}"
+```
+
+**Available Variables:**
+- `{task_name}` - Name of the evaluation task
+- `{sample_id}` - Numeric ID of the sample (1, 2, 3, ...)
+- `{epoch}` - Epoch number during evaluation
+
+**Examples:**
+```bash
+# Compact format
+export SAMPLE_NAME_TEMPLATE="{task_name}_s{sample_id}"
+# Result: "my_task_s1", "my_task_s2", ...
+
+# Descriptive format
+export SAMPLE_NAME_TEMPLATE="Task: {task_name} | Sample {sample_id}"
+# Result: "Task: my_task | Sample 1", "Task: my_task | Sample 2", ...
+
+# Epoch-focused format
+export SAMPLE_NAME_TEMPLATE="{task_name}-epoch{epoch}-{sample_id}"
+# Result: "my_task-epoch1-1", "my_task-epoch1-2", ...
+```
+
+**Default Format:**
+If no custom template is provided, sample traces will use the format: `"{task_name}-sample-{sample_id}-epoch-{epoch}"` (e.g., "my_task-sample-1-epoch-1").
 
 ### Running Inspect with the integration
 

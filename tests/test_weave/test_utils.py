@@ -1,4 +1,4 @@
-from inspect_wandb.weave.utils import format_model_name, format_score_types
+from inspect_wandb.weave.utils import format_model_name, format_score_types, format_sample_display_name
 import pytest
 import re
 
@@ -82,3 +82,81 @@ class TestFormatScoreTypes:
         }
         result = format_score_types(input_dict)
         assert result == input_dict
+
+
+class TestFormatSampleDisplayName:
+    """Test cases for format_sample_display_name function."""
+    
+    def test_basic_template_substitution(self):
+        """Test basic template variable substitution."""
+        template = "{task_name}-sample-{sample_id}-epoch-{epoch}"
+        result = format_sample_display_name(template, "test_task", 1, 1)
+        assert result == "test_task-sample-1-epoch-1"
+    
+    def test_custom_template_format(self):
+        """Test custom template formats work correctly."""
+        template = "{task_name}_s{sample_id}_e{epoch}"
+        result = format_sample_display_name(template, "my_task", 42, 3)
+        assert result == "my_task_s42_e3"
+    
+    def test_minimal_template(self):
+        """Test minimal template with only one variable."""
+        template = "Sample {sample_id}"
+        result = format_sample_display_name(template, "task", 123, 5)
+        assert result == "Sample 123"
+    
+    def test_complex_template(self):
+        """Test complex template with text and multiple variables."""
+        template = "Task: {task_name} | ID: {sample_id} | Epoch: {epoch}"
+        result = format_sample_display_name(template, "classification", 99, 10)
+        assert result == "Task: classification | ID: 99 | Epoch: 10"
+    
+    def test_invalid_template_fallback(self):
+        """Test that invalid templates fall back to default format."""
+        template = "{task_name}-{invalid_var}-{sample_id}"
+        result = format_sample_display_name(template, "test", 1, 1)
+        assert result == "test-sample-1-epoch-1"
+    
+    def test_empty_template_fallback(self):
+        """Test that empty template falls back to default format."""
+        template = ""
+        result = format_sample_display_name(template, "test", 1, 1)
+        assert result == "test-sample-1-epoch-1"
+    
+    def test_malformed_template_fallback(self):
+        """Test that malformed templates fall back gracefully."""
+        template = "{task_name}-{unclosed_brace"
+        result = format_sample_display_name(template, "test", 1, 1)
+        assert result == "test-sample-1-epoch-1"
+    
+    def test_special_characters_in_values(self):
+        """Test that special characters in values are handled correctly."""
+        template = "{task_name}-{sample_id}"
+        result = format_sample_display_name(template, "test-with-dashes", 1, 1)
+        assert result == "test-with-dashes-1"
+    
+    def test_numeric_values_formatting(self):
+        """Test that numeric values are formatted correctly."""
+        template = "{task_name}-{sample_id}-{epoch}"
+        result = format_sample_display_name(template, "task", 0, 999)
+        assert result == "task-0-999"
+    
+    def test_string_sample_id(self):
+        """Test that string sample IDs work correctly."""
+        template = "{task_name}-{sample_id}-{epoch}"
+        result = format_sample_display_name(template, "task", "sample_123", 1)
+        assert result == "task-sample_123-1"
+    
+    @pytest.mark.parametrize("template,task_name,sample_id,epoch,expected", [
+        ("{task_name}", "simple", 1, 1, "simple"),
+        ("{sample_id}", "task", 42, 1, "42"),
+        ("{sample_id}", "task", "str_id", 1, "str_id"),
+        ("{epoch}", "task", 1, 7, "7"),
+        ("{task_name}_{sample_id}_{epoch}", "eval", 10, 2, "eval_10_2"),
+        ("{task_name}_{sample_id}_{epoch}", "eval", "abc123", 2, "eval_abc123_2"),
+        ("prefix-{task_name}-suffix", "test", 1, 1, "prefix-test-suffix"),
+    ])
+    def test_template_variations(self, template, task_name, sample_id, epoch, expected):
+        """Test various template patterns."""
+        result = format_sample_display_name(template, task_name, sample_id, epoch)
+        assert result == expected

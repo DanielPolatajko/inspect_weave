@@ -2,7 +2,7 @@ from typing import Any
 from inspect_ai.hooks import Hooks, RunEnd, RunStart, SampleEnd, SampleStart, TaskStart, TaskEnd
 import weave
 from weave.trace.settings import UserSettings
-from inspect_wandb.weave.utils import format_model_name, format_score_types
+from inspect_wandb.weave.utils import format_model_name, format_score_types, format_sample_display_name
 from inspect_wandb.config.settings_loader import SettingsLoader
 from inspect_wandb.config.settings import WeaveSettings
 from logging import getLogger
@@ -156,7 +156,7 @@ class WeaveEvaluationHooks(Hooks):
                     "task_id": data.eval_id,
                     "metadata": data.summary.metadata,
                 },
-                display_name=f"{task_name}-sample-{data.summary.id}-epoch-{data.summary.epoch}"
+                display_name=format_sample_display_name(self.settings.sample_display_name_template, task_name, data.summary.id, data.summary.epoch)
             )
 
     @override
